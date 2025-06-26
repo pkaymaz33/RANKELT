@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELITE CAREER v4.0</title>
+    
+    <!-- Gerekli kütüphaneler ve fontlar -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- YENİ EKLENEN ÖZELLİK: Ses için Tone.js kütüphanesi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+
+    <!-- Özel Stiller -->
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .nav-active { color: #34d399; transform: scale(1.1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .fade-in { animation: fadeIn 0.5s ease-out forwards; }
+        .team-overall-badge {
+            width: 64px; height: 64px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 9999px; border: 2px solid #4a5568;
+            background-color: #2d3748;
+            font-size: 1.5rem; font-weight: bold;
+            color: #e2e8f0;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #34d399;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .btn-disabled {
+            background-color: #4a5568 !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+            background-image: none !important;
+        }
+        .card-face {
+            backface-visibility: hidden;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+        .captain-band {
+            display: inline-block;
+            background-color: #f59e0b;
+            color: #1f2937;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white overflow-hidden">
+
+    <!-- Modallar için Ana Kapsayıcı -->
+    <div id="modal-container" class="hidden absolute inset-0 bg-black bg-opacity-90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <!-- İsim Giriş Modalı -->
+        <div id="name-modal" class="w-full max-w-sm bg-gray-800 p-8 rounded-2xl shadow-2xl shadow-cyan-500/20 text-center fade-in">
+            <h1 class="text-3xl font-bold text-cyan-400">ELITE CAREER</h1>
+            <p class="text-gray-300 mt-2 mb-6">Kariyerine başlamak için ismini gir.</p>
+            <input type="text" id="player-name-input" placeholder="Oyuncu Adı" class="w-full bg-gray-700 text-white placeholder-gray-400 p-3 rounded-lg border-2 border-gray-600 focus:border-cyan-400 focus:ring-0 outline-none transition">
+            <button id="start-career-btn" class="w-full mt-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-300 transform hover:scale-105">KARİYERE BAŞLA</button>
+        </div>
+        
+        <!-- Transfer Teklifi Modalı -->
+        <div id="transfer-offer-modal" class="hidden w-full max-w-md bg-gray-800 p-6 rounded-2xl shadow-2xl shadow-green-500/20 text-center fade-in"></div>
+
+        <!-- Blackjack Modalı -->
+        <div id="blackjack-modal" class="hidden w-full max-w-lg bg-gray-800 p-6 rounded-2xl shadow-2xl shadow-purple-500/20 text-center fade-in">
+             <h2 class="text-2xl font-bold text-purple-400 mb-4">Blackjack Masası</h2>
+             <div class="space-y-4">
+                 <div>
+                     <h3 class="font-semibold text-gray-300">BAHİS</h3>
+                     <input type="number" id="blackjack-bet-input" placeholder="Bahis Miktarı" class="w-full text-center bg-gray-700 text-white placeholder-gray-400 p-2 mt-1 rounded-lg border-2 border-gray-600 focus:border-purple-400 outline-none">
+                 </div>
+                 <div class="min-h-[120px]">
+                     <h3 class="font-semibold text-gray-300">KRUPİYE (<span id="dealer-score">0</span>)</h3>
+                     <div id="dealer-cards" class="flex justify-center items-center space-x-2 mt-2 h-20"></div>
+                 </div>
+                 <div class="min-h-[120px]">
+                     <h3 class="font-semibold text-gray-300">SEN (<span id="player-blackjack-score">0</span>)</h3>
+                     <div id="player-cards" class="flex justify-center items-center space-x-2 mt-2 h-20"></div>
+                 </div>
+                 <p id="blackjack-result" class="text-lg font-bold h-6"></p>
+                 <div id="blackjack-actions" class="flex justify-center space-x-4">
+                     <button id="blackjack-hit-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg">KART ÇEK</button>
+                     <button id="blackjack-stand-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg">KAL</button>
+                 </div>
+                 <div id="blackjack-start-controls">
+                     <button id="blackjack-play-btn" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg">OYNA</button>
+                 </div>
+                 <button id="blackjack-close-btn" class="w-full mt-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 rounded-lg">MASADAN KALK</button>
+             </div>
+        </div>
+
+        <!-- Genel Mesaj/Onay Modalı -->
+        <div id="message-modal" class="hidden w-full max-w-sm bg-gray-800 p-8 rounded-2xl shadow-2xl shadow-yellow-500/20 text-center fade-in">
+            <h2 id="message-modal-title" class="text-2xl font-bold text-yellow-400 mb-4"></h2>
+            <p id="message-modal-body" class="text-gray-300 mb-6"></p>
+            <button id="message-modal-confirm-btn" class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg">TAMAM</button>
+        </div>
+
+        <!-- Yükleniyor Modalı -->
+        <div id="loading-modal" class="w-full max-w-xs bg-gray-800 p-8 rounded-2xl shadow-2xl shadow-cyan-500/20 text-center fade-in flex flex-col items-center justify-center">
+            <div class="spinner mb-4"></div>
+            <p class="text-lg text-gray-300">Oyun yükleniyor...</p>
+        </div>
+    </div>
+
+
+    <!-- Oyunun ana çerçevesi -->
+    <div id="game-container" class="max-w-md mx-auto h-screen flex flex-col bg-black shadow-2xl shadow-cyan-500/10 hidden relative">
+        <!-- ÜST BİLGİ -->
+        <header class="flex justify-between items-center p-4 bg-gray-900/50 backdrop-blur-sm border-b border-gray-700/50">
+            <div class="flex items-center space-x-3">
+                <img id="player-avatar" src="https://placehold.co/60x60/1a202c/ffffff?text=P" alt="Oyuncu Profili" class="w-14 h-14 rounded-full border-2 border-cyan-400 object-cover">
+                <div>
+                    <h2 id="player-name" class="font-bold text-lg leading-tight">Oyuncu Adı</h2>
+                    <p id="player-money" class="text-xs text-gray-300">Nakit: <span class="font-semibold text-green-400">€0</span></p>
+                    <p id="player-overall" class="text-sm font-bold">OVR: <span id="player-overall-text" class="text-cyan-400">50</span></p>
+                </div>
+            </div>
+            <div class="text-right flex items-center space-x-4">
+                <div>
+                    <p id="season-info" class="font-semibold text-lg">Sezon 1</p>
+                    <p id="week-info" class="text-sm text-gray-300">Hafta: 1 / 30</p>
+                    <p id="player-age" class="text-xs text-gray-300">Yaş: 16</p>
+                </div>
+                <!-- YENİ EKLENEN ÖZELLİK: Müzik kontrol butonu -->
+                <button id="music-toggle-btn" class="p-2 bg-gray-800/50 rounded-full hover:bg-gray-700 transition-colors">
+                    <i data-lucide="volume-2"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- ANA İÇERİK -->
+        <main id="main-content" class="flex-grow overflow-y-auto no-scrollbar p-4 pb-48 space-y-4">
+            <!-- ANA SAYFA -->
+            <div id="home-view">
+                <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700/50 text-center">
+                    <p class="text-sm text-gray-400">Sıradaki Maç</p>
+                    <div class="flex justify-around items-center my-4">
+                        <div class="flex flex-col items-center"><span class="text-2xl mb-2">🏠</span><div id="home-team-overall" class="team-overall-badge">--</div><p id="home-team-name" class="mt-2 font-semibold">Takım Adı</p></div>
+                        <p class="text-2xl font-bold text-gray-500">vs</p>
+                        <div class="flex flex-col items-center"><span class="text-2xl mb-2">✈️</span><div id="away-team-overall" class="team-overall-badge">--</div><p id="away-team-name" class="mt-2 font-semibold">Rakip Adı</p></div>
+                    </div>
+                    <button id="play-match-btn" class="w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-300 transform hover:scale-105 active:scale-100">MAÇI OYNA</button>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/50"><h3 class="font-semibold text-gray-300 text-sm">Lig Durumu</h3><p id="league-position" class="text-2xl font-bold text-cyan-400">--</p></div>
+                    <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/50"><h3 class="font-semibold text-gray-300 text-sm">Moral</h3><p id="morale-status" class="text-2xl font-bold text-yellow-400">Normal</p></div>
+                </div>
+            </div>
+
+            <!-- KARİYER -->
+            <div id="career-view" class="hidden">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-4">Kariyerim</h2>
+                <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700/50 space-y-4">
+                    <div>
+                        <h3 class="font-semibold border-b border-gray-700 pb-2 mb-3">Takım Bilgileri</h3>
+                        <div class="space-y-2 text-sm">
+                            <p>Takım: <span id="player-team" class="font-bold float-right">--</span></p>
+                            <p>Maaş: <span id="player-salary" class="font-bold float-right text-green-400">--</span></p>
+                            <p>Piyasa Değeri: <span id="player-value" class="font-bold float-right text-amber-400">--</span></p>
+                            <p>Forma No: <span id="player-jersey" class="font-bold float-right">--</span></p>
+                            <p>Rol: <span id="player-role" class="font-bold float-right">Genç Yetenek</span></p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold border-b border-gray-700 pb-2 mb-3">Yetenekler</h3>
+                        <div class="space-y-2 text-sm"><p>Hız: <span id="attr-pace" class="font-bold float-right">0</span></p><p>Şut: <span id="attr-shooting" class="font-bold float-right">0</span></p><p>Pas: <span id="attr-passing" class="font-bold float-right">0</span></p></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold border-b border-gray-700 pb-2 mb-3">Sezon İstatistikleri</h3>
+                        <div class="space-y-2 text-sm"><p>Maç: <span id="season-matches" class="font-bold float-right">0</span></p><p>Gol: <span id="season-goals" class="font-bold float-right">0</span></p><p>Asist: <span id="season-assists" class="font-bold float-right">0</span></p></div>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold border-b border-gray-700 pb-2 mb-3">Toplam Kariyer İstatistikleri</h3>
+                        <div class="space-y-2 text-sm"><p>Maç: <span id="career-matches" class="font-bold float-right">0</span></p><p>Gol: <span id="career-goals" class="font-bold float-right">0</span></p><p>Asist: <span id="career-assists" class="font-bold float-right">0</span></p></div>
+                    </div>
+                </div>
+                <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700/50 mt-4"><h3 class="font-semibold border-b border-gray-700 pb-2 mb-3">Milli Takım Kariyeri</h3><div class="space-y-2 text-sm"><p>Milli Maç Sayısı: <span id="national-caps" class="font-bold float-right">0</span></p><p>Milli Takım Golleri: <span id="national-goals" class="font-bold float-right">0</span></p><p id="national-status" class="text-gray-400 italic">Henüz milli takıma çağrılmadın.</p></div></div>
+                <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700/50 mt-4"><h3 class="font-semibold border-b border-gray-700 pb-2 mb-3">Klüp Başarıları</h3><div id="trophies-container" class="space-y-2 text-sm"><p class="text-gray-400 italic">Henüz kupa kazanmadın.</p></div></div>
+                <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700/50 mt-4"><h3 class="font-semibold border-b border-gray-700 pb-2 mb-3">Bireysel Ödüller</h3><div id="awards-container" class="space-y-2 text-sm"><p class="text-gray-400 italic">Henüz bireysel ödül kazanmadın.</p></div></div>
+            </div>
+
+            <!-- LİG & TURNUVA GÖRÜNÜMÜ -->
+            <div id="league-view" class="hidden">
+                <h2 id="league-title" class="text-2xl font-bold text-cyan-400 mb-4">Puan Durumu</h2>
+                <div class="mb-4">
+                    <label for="league-selector" class="block text-sm font-medium text-gray-300 mb-1">Ligi Görüntüle</label>
+                    <select id="league-selector" class="w-full bg-gray-700 text-white p-2 rounded-lg border-2 border-gray-600 focus:border-cyan-400 outline-none"></select>
+                </div>
+                <div id="league-table-container" class="bg-gray-800/60 rounded-xl border border-gray-700/50 overflow-hidden">
+                    <table class="w-full text-sm text-left"><thead class="bg-gray-700/50"><tr><th class="p-2">#</th><th class="p-2">Takım</th><th class="p-2 text-center">OVR</th><th class="p-2 text-center">O</th><th class="p-2 text-center">P</th></tr></thead><tbody id="league-table-body"></tbody></table>
+                </div>
+                 <div id="tournaments-container" class="mt-4 space-y-4"></div>
+            </div>
+            
+            <!-- DÜKKAN -->
+            <div id="shop-view" class="hidden">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-4">Dükkan</h2>
+                <div id="shop-container" class="space-y-3"></div>
+            </div>
+
+            <!-- ETKİNLİKLER -->
+            <div id="events-view" class="hidden">
+                <h2 class="text-2xl font-bold text-cyan-400 mb-4">Etkinlikler & Sosyal Hayat</h2>
+                <div class="space-y-4">
+                    <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700/50">
+                        <h3 class="font-semibold border-b border-gray-700 pb-2 mb-3">Haftalık Aktiviteler</h3>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <button id="extra-training-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200">Ekstra Antrenman</button>
+                            <button id="give-interview-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200">Basın Toplantısı</button>
+                            <button id="blackjack-weekly-btn" class="bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200">Blackjack Oyna</button>
+                            <button id="spend-time-family-btn" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200">Aileyle Vakit Geçir</button>
+                            <button id="sign-autographs-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200">İmza Günü</button>
+                            <button id="meditate-btn" class="bg-sky-600 hover:bg-sky-700 text-white font-semibold py-2 px-3 rounded-lg transition-all duration-200">Meditasyon Yap</button>
+                        </div>
+                    </div>
+                    <div id="girlfriend-view" class="bg-gray-800/60 p-4 rounded-xl border border-gray-700/50"></div>
+                    <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/50"><div class="flex justify-between items-center"><span class="font-semibold">Menajer İlişkisi</span><span id="manager-relation" class="font-bold"></span></div><div class="w-full bg-gray-700 rounded-full h-2.5 mt-2"><div id="manager-relation-bar" class="h-2.5 rounded-full"></div></div></div>
+                    <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/50"><div class="flex justify-between items-center"><span class="font-semibold">Takım Arkadaşları</span><span id="team-relation" class="font-bold"></span></div><div class="w-full bg-gray-700 rounded-full h-2.5 mt-2"><div id="team-relation-bar" class="h-2.5 rounded-full"></div></div></div>
+                    <div class="bg-gray-800/60 p-3 rounded-xl border border-gray-700/50"><div class="flex justify-between items-center"><span class="font-semibold">Taraftar Desteği</span><span id="fan-relation" class="font-bold"></span></div><div class="w-full bg-gray-700 rounded-full h-2.5 mt-2"><div id="fan-relation-bar" class="h-2.5 rounded-full"></div></div></div>
+                </div>
+            </div>
+
+            <!-- MESAJLAR -->
+            <div id="messages-view" class="hidden"><h2 class="text-2xl font-bold text-cyan-400 mb-4">Mesajlar</h2><div id="messages-container" class="space-y-3"></div></div>
+        </main>
+
+        <!-- ALT NAVİGASYON -->
+        <nav class="absolute bottom-0 inset-x-0 flex flex-col items-center py-2 px-1 bg-gray-900/80 backdrop-blur-sm border-t border-gray-700/50">
+            <div class="flex justify-around w-full">
+                <button data-view="home" class="nav-btn flex flex-col items-center nav-active p-2 rounded-lg transition-transform duration-200"><i data-lucide="home"></i><span class="text-xs mt-1">Ana Sayfa</span></button>
+                <button data-view="career" class="nav-btn flex flex-col items-center text-gray-400 p-2 rounded-lg transition-transform duration-200"><i data-lucide="user"></i><span class="text-xs mt-1">Kariyer</span></button>
+                <button data-view="league" class="nav-btn flex flex-col items-center text-gray-400 p-2 rounded-lg transition-transform duration-200"><i data-lucide="bar-chart-2"></i><span class="text-xs mt-1">Lig/Kupa</span></button>
+                <button data-view="events" class="nav-btn flex flex-col items-center text-gray-400 p-2 rounded-lg transition-transform duration-200"><i data-lucide="star"></i><span class="text-xs mt-1">Etkinlikler</span></button>
+                <button data-view="shop" class="nav-btn flex flex-col items-center text-gray-400 p-2 rounded-lg transition-transform duration-200"><i data-lucide="shopping-cart"></i><span class="text-xs mt-1">Dükkan</span></button>
+                <button data-view="messages" class="nav-btn flex flex-col items-center text-gray-400 relative p-2 rounded-lg transition-transform duration-200"><i data-lucide="mail"></i><span class="text-xs mt-1">Mesajlar</span><span id="message-notification" class="absolute top-0 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-gray-800 hidden"></span></button>
+            </div>
+            <div class="text-center text-gray-600 text-xs mt-1">ELITE CAREER v4.0</div>
+        </nav>
+    </div>
+
+    <script type="module">
+        // --- FIREBASE MODÜLLERİ ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- UYGULAMA SABİTLERİ VE DEĞİŞKENLERİ ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'elite-career-v4-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let app, db, auth, currentUserId;
+        let isAuthReady = false, isProcessingSeasonEnd = false;
+        let saveTimeoutId;
+        // YENİ EKLENEN ÖZELLİK: Ses değişkenleri
+        let music, sounds, isMuted = true;
+
+
+        const SHOP_ITEMS = [
+            { id: 'trainer_pace_1', name: 'Hız Antrenörü', price: 15000, desc: '+1 Hız (Kalıcı)', effect: { type: 'attribute', attr: 'pace', value: 1 } },
+            { id: 'trainer_shoot_1', name: 'Şut Antrenörü', price: 15000, desc: '+1 Şut (Kalıcı)', effect: { type: 'attribute', attr: 'shooting', value: 1 } },
+            { id: 'trainer_pass_1', name: 'Pas Antrenörü', price: 15000, desc: '+1 Pas (Kalıcı)', effect: { type: 'attribute', attr: 'passing', value: 1 } },
+            { id: 'gym_1', name: 'Spor Salonu Üyeliği', price: 50000, desc: 'Sezon sonu gelişimine +%10 bonus (1 Sezonluk).', effect: { type: 'boost', boost_type: 'development', value: 0.10, duration: 1 } },
+            { id: 'training_camp_1', name: 'Özel Antrenman Kampı', price: 300000, desc: 'Tüm yeteneklerine anında +2 ekler (Tek Kullanımlık).', effect: { type: 'attribute_all', value: 2 }, one_time: true },
+            { id: 'boots_1', name: 'Profesyonel Krampon', price: 25000, desc: '+3 Şut (5 Maçlık)', effect: { type: 'boost', boost_type: 'attribute', attr: 'shooting', value: 3, matchDuration: 5 } },
+            { id: 'boots_2', name: 'Hafif Krampon', price: 25000, desc: '+3 Hız (5 Maçlık)', effect: { type: 'boost', boost_type: 'attribute', attr: 'pace', value: 3, matchDuration: 5 } },
+            { id: 'car_1', name: 'Lüks Araba', price: 150000, desc: '+10 Taraftar Desteği. Sosyal medyada popüler olursun.', effect: { type: 'social', attr: 'fan', value: 10 } },
+            { id: 'watch_1', name: 'Pahalı Saat', price: 75000, desc: '+5 Takım Arkadaşı İlişkisi. Soyunma odasında saygı görürsün.', effect: { type: 'social', attr: 'team', value: 5 } },
+            { id: 'house_1', name: 'Güzel Ev', price: 500000, desc: 'Moralini kalıcı olarak yüksek tutar, stres azaltır.', effect: { type: 'boost', boost_type: 'morale', value: 5, duration: -1 } },
+            { id: 'chef_1', name: 'Kişisel Aşçı', price: 120000, desc: 'Moraline kalıcı +3 ekler ve sakatlık riskini azaltır.', effect: { type: 'boost', boost_type: 'morale', value: 3, duration: -1 } },
+            { id: 'agent_1', name: 'Daha İyi Menajer', price: 250000, desc: 'Sezon sonu daha iyi transfer teklifleri almanı sağlar (Kalıcı).', effect: { type: 'boost', boost_type: 'transfer', value: 1, duration: -1 } },
+            { id: 'media_coach_1', name: 'Medya Eğitmeni', price: 60000, desc: '+5 Menajer İlişkisi (Kalıcı).', effect: { type: 'social', attr: 'manager', value: 5 } },
+            { id: 'charity_1', name: 'Hayırseverlik Bağışı', price: 100000, desc: 'Taraftar ve Menajer ilişkini +5 arttırır.', effect: { type: 'social_multi', attrs: ['fan', 'manager'], value: 5 } },
+            { id: 'investment_1', name: 'Yatırım Danışmanı', price: 200000, desc: 'Sezon sonu paranı %20 arttırabilir de, azaltabilir de (Kalıcı).', effect: { type: 'boost', boost_type: 'investment', value: 0.20, duration: -1 } },
+            { id: 'psychologist_1', name: 'Spor Psikoloğu', price: 90000, desc: 'Maçlardaki baskıyı azaltır, moralini +5 kalıcı yükseltir.', effect: { type: 'boost', boost_type: 'morale', value: 5, duration: -1 } },
+            { id: 'vacation_1', name: 'Lüks Tatil Paketi', price: 200000, desc: 'Moralini anında tavan yaptırır (+20). (Tek Kullanımlık)', effect: { type: 'social', attr: 'morale_boost', value: 20 }, one_time: true },
+            { id: 'pr_team_1', name: 'Halkla İlişkiler Ekibi', price: 150000, desc: 'Basın toplantılarındaki negatif sonuçları engeller (Kalıcı).', effect: { type: 'boost', boost_type: 'pr_team', value: 1, duration: -1 } },
+            { id: 'language_course_1', name: 'Yabancı Dil Kursu', price: 45000, desc: 'Yurt dışından daha iyi teklifler alma şansını arttırır (Kalıcı).', effect: { type: 'boost', boost_type: 'language', value: 1, duration: -1 } },
+            { id: 'car_2', name: 'Süper Spor Araba', price: 1000000, desc: 'Tüm sosyal ilişkilere +10 verir. Şehrin konuşulanı olursun.', effect: { type: 'social_multi', attrs: ['fan', 'manager', 'team'], value: 10 } },
+            { id: 'leadership_course_1', name: 'Liderlik Kursu', price: 180000, desc: 'Kaptan olma şansını arttırır ve menajerle ilişkiyi +5 güçlendirir.', effect: { type: 'social_and_boost', social: { attr: 'manager', value: 5 }, boost: { type: 'captaincy_chance', value: 0.2, duration: -1} } },
+            { id: 'golden_boots_permanent', name: 'Altın Kramponlar', price: 1500000, desc: '+3 Şut (Kalıcı). Efsanelerin tercihi.', effect: { type: 'attribute', attr: 'shooting', value: 3 } },
+            { id: 'legacy_agent_1', name: 'Efsane Menajer', price: 750000, desc: 'Overall 85+ olduğunda Avrupa\'nın devlerinden teklif alma şansını çok yükseltir.', effect: { type: 'boost', boost_type: 'legacy_agent', value: 1, duration: -1 } },
+            { id: 'brand_deal_1', name: 'Sponsorluk Anlaşması', price: 400000, desc: 'Her sezon başında €50,000 ek gelir sağlar (Kalıcı).', effect: { type: 'boost', boost_type: 'sponsorship', value: 50000, duration: -1 } },
+        ];
+        
+        const leagueData = {
+            "Bölgesel Amatör Lig": {
+                promotionThreshold: 2, relegationThreshold: 0, tier: 0, country: "Türkiye",
+                teams: [ { name: "Mardin 1969 Spor", overall: 48 }, { name: "Adıyaman FK", overall: 47 }, { name: "Ceyhanspor", overall: 46 }, { name: "Ağrı 1970 Spor", overall: 47 }, { name: "Bitlis Özgüzelderespor", overall: 45 }, { name: "Bağlar Belediyespor", overall: 46 }, { name: "Yüksekova Belediyespor", overall: 44 }, { name: "1984 Muşspor", overall: 48 }, { name: "Siirt İÖİ Spor", overall: 46 }, { name: "Talasgücü Belediyespor", overall: 45 }, { name: "Viranşehir Bld.", overall: 44 }, { name: "Mazıdağı Fosfat Spor", overall: 49 }, { name: "Siverek Belediyespor", overall: 45 }, { name: "Kahta 02 Spor", overall: 46 }, { name: "Dersimspor", overall: 47 }, { name: "Karaköprü Bld.", overall: 48 } ]
+            },
+            "TFF 2. Lig": {
+                promotionThreshold: 2, relegationThreshold: 3, tier: 1, country: "Türkiye",
+                teams: [ { name: "Amedspor", overall: 64 }, { name: "Vanspor FK", overall: 61 }, { name: "Esenler Erokspor", overall: 62 }, { name: "Bucaspor 1928", overall: 60 }, { name: "24 Erzincanspor", overall: 59 }, { name: "Menemen FK", overall: 58 }, { name: "Somaspor", overall: 57 }, { name: "İskenderunspor", overall: 59 }, { name: "Isparta 32 Spor", overall: 58 }, { name: "Karacabey Bld.", overall: 57 }, { name: "Ankara Demir.", overall: 60 }, { name: "Düzcespor", overall: 56 }, { name: "Denizlispor", overall: 59 }, { name: "Uşak Spor", overall: 55 }, { name: "Kastamonuspor", overall: 61 }, { name: "Sarıyer", overall: 58 }]
+            },
+            "TFF 1. Lig": {
+                promotionThreshold: 2, relegationThreshold: 3, tier: 2, country: "Türkiye",
+                teams: [ { name: "Kocaelispor", overall: 68 }, { name: "Sakaryaspor", overall: 69 }, { name: "Bodrum FK", overall: 67 }, { name: "Çorum FK", overall: 66 }, { name: "Bandırmaspor", overall: 67 }, { name: "Gençlerbirliği", overall: 68 }, { name: "Ümraniyespor", overall: 66 }, { name: "Manisa FK", overall: 65 }, { name: "Göztepe", overall: 70 }, { name: "Eyüpspor", overall: 71 }, { name: "Adanaspor", overall: 65 }, { name: "Boluspor", overall: 66 }, { name: "Erzurumspor FK", overall: 67 }, { name: "Tuzlaspor", overall: 64 }, { name: "Şanlıurfaspor", overall: 65 }, { name: "Keçiörengücü", overall: 66 }]
+            },
+            "Süper Lig": {
+                uclSpots: 1, uelSpots: 1, promotionThreshold: 0, relegationThreshold: 4, tier: 3, country: "Türkiye",
+                teams: [ { name: "Fenerbahçe", overall: 82 }, { name: "Galatasaray", overall: 83 }, { name: "Beşiktaş", overall: 80 }, { name: "Trabzonspor", overall: 79 }, { name: "Başakşehir", overall: 77 }, { name: "Kasımpaşa", overall: 74 }, { name: "Sivasspor", overall: 75 }, { name: "Alanyaspor", overall: 76 }, { name: "Çaykur Rizespor", overall: 73 }, { name: "Antalyaspor", overall: 75 }, { name: "Gaziantep FK", overall: 72 }, { name: "Ankaragücü", overall: 74 }, { name: "Konyaspor", overall: 73 }, { name: "Kayserispor", overall: 74 }, { name: "Samsunspor", overall: 72 }, { name: "Hatayspor", overall: 71 }]
+            },
+            "Premier League": {
+                uclSpots: 4, uelSpots: 2, promotionThreshold: 0, relegationThreshold: 3, tier: 4, country: "İngiltere",
+                teams: [ { name: "Manchester City", overall: 90 }, { name: "Arsenal", overall: 88 }, { name: "Liverpool", overall: 88 }, { name: "Manchester Utd", overall: 86 }, { name: "Chelsea", overall: 85 }, { name: "Newcastle Utd", overall: 84 }, { name: "Tottenham", overall: 83 }, { name: "Aston Villa", overall: 83 }, { name: "Brighton", overall: 81 }, { name: "West Ham", overall: 80 }, { name: "Brentford", overall: 79 }, { name: "Fulham", overall: 78 }, { name: "Crystal Palace", overall: 78 }, { name: "Wolves", overall: 77 }, { name: "Bournemouth", overall: 76 }, { name: "Everton", overall: 77 }]
+            },
+            "La Liga": {
+                uclSpots: 4, uelSpots: 2, promotionThreshold: 0, relegationThreshold: 3, tier: 4, country: "İspanya",
+                teams: [ { name: "Real Madrid", overall: 90 }, { name: "Barcelona", overall: 89 }, { name: "Atlético Madrid", overall: 86 }, { name: "Real Sociedad", overall: 84 }, { name: "Villarreal", overall: 83 }, { name: "Real Betis", overall: 82 }, { name: "Sevilla", overall: 83 }, { name: "Athletic Club", overall: 81 }, { name: "Girona", overall: 80 }, { name: "Osasuna", overall: 79 }, { name: "Celta Vigo", overall: 78 }, { name: "Valencia", overall: 79 }, { name: "Mallorca", overall: 77 }, { name: "Getafe", overall: 76 }, { name: "Almería", overall: 75 }, { name: "Cádiz", overall: 74 }]
+            },
+            "Serie A": {
+                uclSpots: 4, uelSpots: 2, promotionThreshold: 0, relegationThreshold: 3, tier: 4, country: "İtalya",
+                teams: [ { name: "Inter", overall: 88 }, { name: "AC Milan", overall: 87 }, { name: "Napoli", overall: 87 }, { name: "Juventus", overall: 86 }, { name: "Lazio", overall: 84 }, { name: "AS Roma", overall: 84 }, { name: "Atalanta", overall: 83 }, { name: "Fiorentina", overall: 82 }, { name: "Torino", overall: 79 }, { name: "Bologna", overall: 78 }, { name: "Udinese", overall: 78 }, { name: "Monza", overall: 77 }, { name: "Sassuolo", overall: 77 }, { name: "Empoli", overall: 75 }, { name: "Salernitana", overall: 74 }, { name: "Lecce", overall: 73 }]
+            },
+            "Bundesliga": {
+                uclSpots: 4, uelSpots: 2, promotionThreshold: 0, relegationThreshold: 2, tier: 4, country: "Almanya",
+                teams: [ { name: "Bayern München", overall: 91 }, { name: "Borussia Dortmund", overall: 88 }, { name: "RB Leipzig", overall: 86 }, { name: "Bayer Leverkusen", overall: 85 }, { name: "Union Berlin", overall: 83 }, { name: "SC Freiburg", overall: 82 }, { name: "Eintracht Frankfurt", overall: 82 }, { name: "VfL Wolfsburg", overall: 80 }, { name: "Mainz 05", overall: 78 }, { name: "M'gladbach", overall: 79 }, { name: "FC Köln", overall: 77 }, { name: "TSG Hoffenheim", overall: 77 }, { name: "Werder Bremen", overall: 76 }, { name: "VfB Stuttgart", overall: 76 }, { name: "FC Augsburg", overall: 74 }, { name: "VfL Bochum", overall: 73 }]
+            },
+            "Ligue 1": {
+                uclSpots: 3, uelSpots: 2, promotionThreshold: 0, relegationThreshold: 2, tier: 4, country: "Fransa",
+                teams: [ { name: "Paris Saint-Germain", overall: 89 }, { name: "Olympique de Marseille", overall: 85 }, { name: "AS Monaco", overall: 83 }, { name: "RC Lens", overall: 84 }, { name: "Stade Rennais", overall: 82 }, { name: "Lille OSC", overall: 81 }, { name: "Olympique Lyonnais", overall: 81 }, { name: "OGC Nice", overall: 80 }, { name: "FC Lorient", overall: 77 }, { name: "Stade de Reims", overall: 76 }, { name: "Montpellier", overall: 76 }, { name: "Toulouse FC", overall: 75 }, { name: "FC Nantes", overall: 75 }, { name: "Strasbourg", overall: 74 }, { name: "Brest", overall: 73 }, { name: "Clermont Foot", overall: 72 }]
+            }
+        };
+
+        const LEAGUE_ORDER = [ "Bölgesel Amatör Lig", "TFF 2. Lig", "TFF 1. Lig", "Süper Lig", "Ligue 1", "Serie A", "Bundesliga", "La Liga", "Premier League" ];
+        const MAX_MESSAGES = 50;
+
+        let gameState = {
+            player: {
+                name: "", age: 16, money: 1000, salary: 500,
+                attributes: { pace: 50, shooting: 52, passing: 48 },
+                get overall() { 
+                    const tempBoosts = this.active_boosts?.filter(b => b.boost_type === 'attribute' && b.matchDuration > 0) || [];
+                    const paceBoost = tempBoosts.filter(b => b.attr === 'pace').reduce((sum, b) => sum + b.value, 0);
+                    const shootingBoost = tempBoosts.filter(b => b.attr === 'shooting').reduce((sum, b) => sum + b.value, 0);
+                    const passingBoost = tempBoosts.filter(b => b.attr === 'passing').reduce((sum, b) => sum + b.value, 0);
+                    return Math.round(((this.attributes.pace + paceBoost) + (this.attributes.shooting + shootingBoost) + (this.attributes.passing + passingBoost)) / 3);
+                },
+                team: "Mazıdağı Fosfat Spor", currentLeague: LEAGUE_ORDER[0], jerseyNumber: 10, role: "Genç Yetenek",
+                stats: { matches: 0, goals: 0, assists: 0, seasonGoals: 0, seasonAssists: 0, seasonMatches: 0 },
+                nameChangesLeft: 1,
+                girlfriend: { status: 'single', name: '', weeksSinceInteraction: 0 },
+                nationalTeam: { caps: 0, goals: 0, calledUp: false, currentCountry: "Türkiye" },
+                trophies: [], awards: [],
+                active_boosts: [],
+                weeklyActivities: { trainingDone: false, interviewDone: false, blackjackPlayed: false, familyTime: false, autograph: false, meditation: false },
+                isCaptain: false,
+                marketValue: 10000
+            },
+            season: { year: 1, week: 1, totalWeeks: 30 },
+            social: { manager: 60, team: 50, fan: 20 },
+            tournaments: { ucl: null, uel: null, world_cup: null },
+            messages: [], leagueTable: [], fixture: []
+        };
+        
+        const DOMElements = {
+            modalContainer: document.getElementById('modal-container'), nameModal: document.getElementById('name-modal'),
+            transferOfferModal: document.getElementById('transfer-offer-modal'), messageModal: document.getElementById('message-modal'), 
+            loadingModal: document.getElementById('loading-modal'), blackjackModal: document.getElementById('blackjack-modal'),
+            startCareerBtn: document.getElementById('start-career-btn'), playerNameInput: document.getElementById('player-name-input'),
+            gameContainer: document.getElementById('game-container'),
+            views: { home: document.getElementById('home-view'), career: document.getElementById('career-view'), league: document.getElementById('league-view'), events: document.getElementById('events-view'), shop: document.getElementById('shop-view'), messages: document.getElementById('messages-view') },
+            navButtons: document.querySelectorAll('.nav-btn'), playMatchBtn: document.getElementById('play-match-btn'),
+            messageContainer: document.getElementById('messages-container'), messageNotification: document.getElementById('message-notification'),
+            leagueTableBody: document.getElementById('league-table-body'), leagueTitle: document.getElementById('league-title'),
+            leagueSelector: document.getElementById('league-selector'), 
+            shopContainer: document.getElementById('shop-container'),
+            extraTrainingBtn: document.getElementById('extra-training-btn'),
+            giveInterviewBtn: document.getElementById('give-interview-btn'),
+            blackjackWeeklyBtn: document.getElementById('blackjack-weekly-btn'),
+            spendTimeFamilyBtn: document.getElementById('spend-time-family-btn'),
+            signAutographsBtn: document.getElementById('sign-autographs-btn'),
+            meditateBtn: document.getElementById('meditate-btn'),
+            nationalCapsDisplay: document.getElementById('national-caps'),
+            nationalGoalsDisplay: document.getElementById('national-goals'),
+            nationalStatusDisplay: document.getElementById('national-status'),
+            trophiesContainer: document.getElementById('trophies-container'),
+            awardsContainer: document.getElementById('awards-container'),
+            tournamentsContainer: document.getElementById('tournaments-container'),
+            musicToggleBtn: document.getElementById('music-toggle-btn'),
+        };
+
+        // --- SES FONKSİYONLARI ---
+
+        /**
+         * Telifsiz, sentezlenmiş sesleri ve müziği oluşturur.
+         */
+        function initializeAudio() {
+            const musicSynth = new Tone.FMSynth({
+                harmonicity: 1.5,
+                modulationIndex: 10,
+                detune: 0,
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 1 },
+                modulation: { type: "square" },
+                modulationEnvelope: { attack: 0.01, decay: 0.5, sustain: 0, release: 0.5 }
+            }).toDestination();
+            musicSynth.volume.value = -28;
+
+            music = new Tone.Loop(time => {
+                musicSynth.triggerAttackRelease("C2", "2n", time);
+                musicSynth.triggerAttackRelease("G2", "4n", time + Tone.Time("2n").toSeconds());
+                 musicSynth.triggerAttackRelease("E2", "8n", time + Tone.Time("2n").toSeconds() + Tone.Time("4n").toSeconds());
+            }, "1n").start(0);
+            
+            sounds = {
+                click: new Tone.MembraneSynth({ pitchDecay: 0.01, octaves: 6, oscillator: { type: "sine" }, envelope: { attack: 0.001, decay: 0.2, sustain: 0.01, release: 0.4, attackCurve: "exponential" } }).toDestination(),
+                switch: new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination(),
+                match: new Tone.PolySynth(Tone.Synth, { oscillator: { type: "fatsawtooth" }, envelope: { attack: 0.1, decay: 0.2, sustain: 0.5, release: 0.8 } }).toDestination(),
+                purchase: new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 } }).toDestination(),
+                error: new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.2 } }).toDestination(),
+            };
+
+            sounds.click.volume.value = -15;
+            sounds.switch.volume.value = -18;
+            sounds.match.volume.value = -12;
+            sounds.purchase.volume.value = -10;
+            sounds.error.volume.value = -15;
+
+            Tone.Master.mute = isMuted;
+            updateMusicButtonIcon();
+        }
+
+        /**
+         * Belirtilen sesi çalar.
+         * @param {string} soundName - 'sounds' nesnesindeki sesin adı.
+         */
+        function playSound(soundName) {
+            if (isMuted || !sounds || !sounds[soundName]) return;
+            
+            switch(soundName) {
+                case 'click':
+                    sounds.click.triggerAttackRelease("C5", "32n");
+                    break;
+                case 'switch':
+                    sounds.switch.triggerAttackRelease("E5", "16n");
+                    break;
+                case 'match':
+                    sounds.match.triggerAttackRelease(["C4", "E4", "A4"], "8n");
+                    break;
+                case 'purchase':
+                    sounds.purchase.triggerAttackRelease("G5", "16n");
+                    break;
+                 case 'error':
+                    sounds.error.triggerAttackRelease("C3", "16n");
+                    break;
+            }
+        }
+        
+        /**
+         * Müziği ve sesleri açıp kapatır.
+         */
+        function toggleMusic() {
+            isMuted = !isMuted;
+            Tone.Master.mute = isMuted;
+            updateMusicButtonIcon();
+        }
+
+        /**
+         * Müzik butonu ikonunu günceller.
+         */
+        function updateMusicButtonIcon() {
+            if (DOMElements.musicToggleBtn) {
+                 DOMElements.musicToggleBtn.innerHTML = isMuted ? '<i data-lucide="volume-x"></i>' : '<i data-lucide="volume-2"></i>';
+                 lucide.createIcons();
+            }
+        }
+
+        // --- VERİ KAYIT VE YÜKLEME ---
+        async function saveGameState(immediate = false) {
+            if (!isAuthReady || !currentUserId) return;
+            clearTimeout(saveTimeoutId);
+
+            const performSave = async () => {
+                try {
+                    const stateToSave = JSON.parse(JSON.stringify(gameState));
+                    stateToSave.player.overallValue = gameState.player.overall; 
+                    const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/game_state/current_game_state_v4.0`);
+                    await setDoc(docRef, stateToSave);
+                    console.log("Oyun durumu başarıyla kaydedildi.");
+                } catch (e) { console.error("Oyun durumu kaydedilirken hata oluştu: ", e); }
+            };
+
+            if (immediate) await performSave();
+            else saveTimeoutId = setTimeout(performSave, 1000);
+        }
+
+        async function loadGameState() {
+            if (!isAuthReady || !currentUserId) return null;
+            try {
+                const docRef = doc(db, `artifacts/${appId}/users/${currentUserId}/game_state/current_game_state_v4.0`);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    console.log("Kayıtlı oyun durumu yüklendi.");
+                    const loadedState = docSnap.data();
+                    const defaults = JSON.parse(JSON.stringify(gameState));
+                    loadedState.player = { ...defaults.player, ...loadedState.player };
+                    loadedState.player.attributes = { ...defaults.player.attributes, ...loadedState.player.attributes };
+                    loadedState.player.stats = { ...defaults.player.stats, ...loadedState.player.stats };
+                    loadedState.player.girlfriend = { ...defaults.player.girlfriend, ...loadedState.player.girlfriend };
+                    loadedState.player.nationalTeam = { ...defaults.player.nationalTeam, ...loadedState.player.nationalTeam };
+                    loadedState.social = { ...defaults.social, ...loadedState.social };
+                    loadedState.tournaments = { ...defaults.tournaments, ...loadedState.tournaments };
+                    loadedState.player.trophies = loadedState.player.trophies || [];
+                    loadedState.player.awards = loadedState.player.awards || [];
+                    loadedState.player.active_boosts = loadedState.player.active_boosts || [];
+                    loadedState.player.weeklyActivities = { ...defaults.player.weeklyActivities, ...loadedState.player.weeklyActivities };
+                    loadedState.messages = loadedState.messages || [];
+                    loadedState.player.isCaptain = loadedState.player.isCaptain || false;
+                    loadedState.player.marketValue = loadedState.player.marketValue || 10000;
+                    return loadedState;
+                } else { console.log("Kayıtlı oyun durumu bulunamadı."); return null; }
+            } catch (e) { console.error("Oyun durumu yüklenirken hata oluştu: ", e); return null; }
+        }
+
+        // --- OYUN MANTIĞI ---
+        function initializeSeason() {
+            gameState.player.active_boosts = gameState.player.active_boosts.map(boost => {
+                if (boost.duration > 0) boost.duration--;
+                return boost;
+            }).filter(boost => boost.duration !== 0);
+            
+            const sponsorship = gameState.player.active_boosts.find(b => b.boost_type === 'sponsorship');
+            if (sponsorship) {
+                gameState.player.money += sponsorship.value;
+                addMessage('Sponsorluk Geliri', `Yeni sezon sponsorluk anlaşmasından +€${sponsorship.value.toLocaleString('de-DE')} kazandın.`, 'system');
+            }
+
+            const currentLeagueInfo = leagueData[gameState.player.currentLeague];
+            if (!currentLeagueInfo) { gameState.player.currentLeague = LEAGUE_ORDER[0]; }
+            const currentLeagueTeams = JSON.parse(JSON.stringify(leagueData[gameState.player.currentLeague].teams));
+            if (!currentLeagueTeams.some(t => t.name === gameState.player.team)) {
+                gameState.player.team = currentLeagueTeams.sort((a, b) => a.overall - b.overall)[0].name;
+            }
+
+            gameState.leagueTable = currentLeagueTeams.map(team => ({ name: team.name, overall: team.overall, played: 0, points: 0, rank: 0, goalsFor: 0, goalsAgainst: 0 }));
+            generateFixture();
+            gameState.season.week = 1;
+            gameState.player.stats.seasonMatches = 0;
+            gameState.player.stats.seasonGoals = 0;
+            gameState.player.stats.seasonAssists = 0;
+            gameState.player.weeklyActivities = { trainingDone: false, interviewDone: false, blackjackPlayed: false, familyTime: false, autograph: false, meditation: false };
+            
+            checkCaptaincy(); 
+
+            updateUI();
+            saveGameState(true);
+        }
+
+        function generateFixture() {
+            const currentLeagueInfo = leagueData[gameState.player.currentLeague];
+            if (!currentLeagueInfo) return; 
+
+            const teamsInLeague = gameState.leagueTable.map(t => t.name);
+            const playerTeam = gameState.player.team;
+            const opponents = teamsInLeague.filter(name => name !== playerTeam);
+            for (let i = opponents.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [opponents[i], opponents[j]] = [opponents[j], opponents[i]];
+            }
+            gameState.fixture = [...opponents, ...opponents];
+            gameState.season.totalWeeks = gameState.fixture.length;
+        }
+
+        function playMatch() {
+            if (isProcessingSeasonEnd || gameState.season.week > gameState.season.totalWeeks) {
+                if (!isProcessingSeasonEnd) {
+                    DOMElements.playMatchBtn.disabled = true;
+                    DOMElements.playMatchBtn.innerText = "SEZON ANALİZ EDİLİYOR...";
+                    handleSeasonEnd();
+                }
+                return;
+            }
+            playSound('match');
+            
+            gameState.player.money += gameState.player.salary;
+            addMessage(`Haftalık Maaş`, `+€${gameState.player.salary.toLocaleString('de-DE')} hesabına yattı. Mevcut bakiye: €${gameState.player.money.toLocaleString('de-DE')}`, 'system');
+            
+            gameState.player.active_boosts = gameState.player.active_boosts.map(boost => {
+                if (boost.matchDuration && boost.matchDuration > 0) {
+                    boost.matchDuration--;
+                    if(boost.matchDuration === 0) {
+                        addMessage('Ekipman Eskidi', `${boost.name} artık etkisini kaybetti.`, 'system');
+                    }
+                }
+                return boost;
+            }).filter(boost => (boost.matchDuration !== 0));
+
+            const matchEvents = generateMatchEvents();
+            const goalsScored = matchEvents.filter(e => e.type === 'goal').length;
+            const assistsMade = matchEvents.filter(e => e.type === 'assist').length;
+            const matchRating = calculateMatchRating(goalsScored, assistsMade, matchEvents.length);
+            
+            const currentOpponentName = gameState.fixture[gameState.season.week - 1];
+            const { playerScore, opponentScore, won } = updateLeaguePoints(goalsScored, assistsMade, currentOpponentName);
+            
+            let reportBody = `Maç Sonucu: ${playerScore} - ${opponentScore}\n`;
+            reportBody += matchEvents.length > 0 ? matchEvents.map(e => `- ${e.text}`).join('\n') : "Maçta pek varlık gösteremedin.";
+            
+            addMessage(`Hafta ${gameState.season.week}: ${gameState.player.team} vs ${currentOpponentName}`, reportBody, 'match');
+            addMessage(`Maç Sonu Reytingin: ${matchRating.toFixed(1)} / 10.0`, `Bu maçtaki performansın teknik heyet tarafından ${matchRating.toFixed(1)} olarak değerlendirildi.`, 'system');
+
+            updateSocialRelations(goalsScored, assistsMade, matchEvents.length, won);
+            updatePlayerStats(goalsScored, assistsMade);
+            advanceWeek();
+        }
+        
+        function advanceWeek() {
+            gameState.season.week++;
+            gameState.player.weeklyActivities = { trainingDone: false, interviewDone: false, blackjackPlayed: false, familyTime: false, autograph: false, meditation: false };
+            
+            if (gameState.season.week > gameState.season.totalWeeks) {
+                DOMElements.playMatchBtn.innerText = "SEZONU BİTİR";
+                DOMElements.playMatchBtn.className = DOMElements.playMatchBtn.className.replace(/from-green-500|to-emerald-500/g, 'from-cyan-500 to-blue-500');
+            }
+
+            updateUI();
+            saveGameState();
+            switchView('messages');
+        }
+
+        function updatePlayerStats(goals, assists) {
+            gameState.player.stats.matches++;
+            gameState.player.stats.goals += goals;
+            gameState.player.stats.assists += assists;
+            gameState.player.stats.seasonMatches++;
+            gameState.player.stats.seasonGoals += goals;
+            gameState.player.stats.seasonAssists += assists;
+        }
+
+        async function handleSeasonEnd() {
+            isProcessingSeasonEnd = true;
+            
+            const investmentBoost = gameState.player.active_boosts.find(b => b.boost_type === 'investment');
+            if(investmentBoost) {
+                const investmentReturn = Math.random() * (investmentBoost.value * 2) - investmentBoost.value;
+                const moneyChange = Math.round(gameState.player.money * investmentReturn);
+                gameState.player.money += moneyChange;
+                const resultText = moneyChange >= 0 ? `kazandın: +€${moneyChange.toLocaleString()}` : `kaybettin: -€${Math.abs(moneyChange).toLocaleString()}`;
+                addMessage('Yatırım Sonucu', `Yatırım danışmanın sayesinde bu sezon ${resultText}.`, 'system');
+            }
+
+            const oldOverall = gameState.player.overall;
+            updatePlayerDevelopment();
+            const newOverall = gameState.player.overall;
+            
+            updatePlayerValue();
+            checkSeasonAwards();
+            checkTournamentQualification();
+            const promotionRelegationResult = checkPromotionRelegation();
+            const seasonReportMessage = createSeasonReportMessage(oldOverall, newOverall, promotionRelegationResult.message);
+            addMessage(seasonReportMessage.title, seasonReportMessage.body, seasonReportMessage.type);
+            
+            gameState.season.year++;
+            gameState.player.age++;
+            checkNationalTeamCallUp();
+            
+            const offers = generateTransferOffers();
+            if (offers.length > 0) {
+                showTransferOfferModal(offers);
+            } else {
+                addMessage("Transfer Teklifi Yok", "Bu sezon sana uygun bir transfer teklifi gelmedi.", 'system');
+                await initializeSeason();
+                completeSeasonEndProcess();
+            }
+        }
+        
+        function completeSeasonEndProcess() {
+            isProcessingSeasonEnd = false;
+            DOMElements.playMatchBtn.disabled = false;
+            DOMElements.playMatchBtn.innerText = "MAÇI OYNA";
+            DOMElements.playMatchBtn.className = "w-full bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg hover:from-green-600 hover:to-emerald-600 transition-all duration-300 transform hover:scale-105 active:scale-100";
+            updateUI();
+            saveGameState(true);
+            switchView('home');
+        }
+
+        // --- ARAYÜZ GÜNCELLEME (UI) ---
+        function updateUI() {
+            if (!DOMElements.gameContainer.classList.contains('hidden')) {
+                lucide.createIcons();
+                
+                document.getElementById('player-name').innerText = gameState.player.name;
+                document.getElementById('player-avatar').src = `https://placehold.co/60x60/1a202c/ffffff?text=${gameState.player.name.charAt(0).toUpperCase()}`;
+                document.getElementById('player-money').innerHTML = `Nakit: <span class="font-semibold text-green-400">€${gameState.player.money.toLocaleString('de-DE')}</span>`;
+                document.getElementById('player-overall-text').innerText = gameState.player.overall;
+                document.getElementById('player-age').innerText = `Yaş: ${gameState.player.age}`;
+                document.getElementById('season-info').innerText = `Sezon ${gameState.season.year}`;
+                document.getElementById('week-info').innerText = `Hafta: ${gameState.season.week} / ${gameState.season.totalWeeks}`;
+                
+                const currentView = document.querySelector('.nav-active')?.dataset.view || 'home';
+                switch(currentView) {
+                    case 'home': updateNextMatchUI(); updateMorale(); break;
+                    case 'career': updateCareerViewUI(); break;
+                    case 'league': 
+                        renderLeagueTable(DOMElements.leagueSelector.value);
+                        renderTournaments(); 
+                        break;
+                    case 'events': updateEventsViewUI(); break;
+                    case 'shop': renderShop(); break;
+                    case 'messages': renderMessages(); break;
+                }
+            }
+        }
+
+        function updateCareerViewUI() {
+            const { player } = gameState;
+            document.getElementById('player-team').innerText = player.team;
+            document.getElementById('player-salary').innerText = `€${player.salary.toLocaleString('de-DE')} / hafta`;
+            document.getElementById('player-value').innerText = `€${player.marketValue.toLocaleString('de-DE')}`;
+            const playerRoleElement = document.getElementById('player-role');
+            playerRoleElement.innerHTML = player.role;
+            if (player.isCaptain) {
+                playerRoleElement.innerHTML += `<span class="captain-band">C</span>`;
+            }
+
+            document.getElementById('player-jersey').innerText = player.jerseyNumber;
+            document.getElementById('attr-pace').innerText = player.attributes.pace;
+            document.getElementById('attr-shooting').innerText = player.attributes.shooting;
+            document.getElementById('attr-passing').innerText = player.attributes.passing;
+            document.getElementById('season-matches').innerText = player.stats.seasonMatches;
+            document.getElementById('season-goals').innerText = player.stats.seasonGoals;
+            document.getElementById('season-assists').innerText = player.stats.seasonAssists;
+            document.getElementById('career-matches').innerText = player.stats.matches;
+            document.getElementById('career-goals').innerText = player.stats.goals;
+            document.getElementById('career-assists').innerText = player.stats.assists;
+            updateNationalTeamUI();
+            updateTrophiesUI();
+            updateAwardsUI();
+        }
+
+        function updateEventsViewUI() {
+            const { weeklyActivities } = gameState.player;
+            DOMElements.extraTrainingBtn.disabled = weeklyActivities.trainingDone;
+            DOMElements.giveInterviewBtn.disabled = weeklyActivities.interviewDone;
+            DOMElements.blackjackWeeklyBtn.disabled = weeklyActivities.blackjackPlayed;
+            DOMElements.spendTimeFamilyBtn.disabled = weeklyActivities.familyTime;
+            DOMElements.signAutographsBtn.disabled = weeklyActivities.autograph;
+            DOMElements.meditateBtn.disabled = weeklyActivities.meditation;
+
+            Object.keys(weeklyActivities).forEach(activity => {
+                const btnKey = `${activity.replace(/Done|Played/, '')}Btn`;
+                const btn = DOMElements[btnKey] || DOMElements[`${activity.replace(/Done|Played/, '')}WeeklyBtn`];
+                 if (btn) {
+                     btn.classList.toggle('btn-disabled', weeklyActivities[activity]);
+                 }
+            });
+            
+            updateGirlfriendView();
+            updateSocialBar('manager', gameState.social.manager);
+            updateSocialBar('team', gameState.social.team);
+            updateSocialBar('fan', gameState.social.fan);
+        }
+        
+        function renderLeagueTable(leagueName) {
+            const leagueInfo = leagueData[leagueName];
+            if (!leagueInfo) return; 
+            
+            DOMElements.leagueTitle.innerText = `${leagueName} Puan Durumu`;
+            DOMElements.leagueTitle.dataset.currentLeague = leagueName;
+            DOMElements.leagueTableBody.innerHTML = '';
+            
+            let tableToShow;
+            if (leagueName === gameState.player.currentLeague) {
+                // Oyuncunun kendi ligiyse, gameState'den zaten sıralı olan tabloyu al
+                tableToShow = gameState.leagueTable;
+            } else {
+                // Diğer ligler için, overall'a göre sıralanmış statik bir liste göster
+                tableToShow = leagueInfo.teams.map(t => ({...t, played: '-', points: '-', rank: 0})).sort((a,b) => b.overall - a.overall);
+            }
+
+            const currentLeagueInfo = leagueData[leagueName];
+            const totalTeams = tableToShow.length;
+
+            tableToShow.forEach((team, index) => {
+                const rank = (leagueName === gameState.player.currentLeague) ? team.rank : index + 1;
+                const isPlayerTeam = team.name === gameState.player.team && leagueName === gameState.player.currentLeague;
+                let rowClass = isPlayerTeam ? 'bg-cyan-900/50 font-bold' : '';
+
+                if (leagueName === gameState.player.currentLeague) {
+                    if (currentLeagueInfo.uclSpots > 0 && rank <= currentLeagueInfo.uclSpots) rowClass += ' bg-blue-900/50';
+                    else if (currentLeagueInfo.uelSpots > 0 && rank <= currentLeagueInfo.uclSpots + currentLeagueInfo.uelSpots) rowClass += ' bg-emerald-900/50';
+                    else if (currentLeagueInfo.relegationThreshold > 0 && rank > totalTeams - currentLeagueInfo.relegationThreshold) rowClass += ' bg-red-900/50';
+                }
+                
+                DOMElements.leagueTableBody.innerHTML += `<tr class="${rowClass}"><td class="p-2">${rank}</td><td class="p-2">${team.name}</td><td class="p-2 text-center font-semibold text-cyan-300">${team.overall}</td><td class="p-2 text-center">${team.played}</td><td class="p-2 text-center">${team.points}</td></tr>`;
+            });
+       }
+
+        function renderTournaments() {
+            const { tournaments } = gameState;
+            DOMElements.tournamentsContainer.innerHTML = '';
+            let content = '';
+
+            if (tournaments.ucl && tournaments.ucl.active) {
+                content += `<div class="bg-blue-800/60 p-4 rounded-xl border border-blue-600/50"><h3 class="font-bold text-lg text-blue-300">🏆 Şampiyonlar Ligi</h3><p class="text-sm text-gray-200 mt-1">Mevcut Aşama: <span class="font-semibold">${tournaments.ucl.stage}</span></p></div>`;
+            }
+            if (tournaments.uel && tournaments.uel.active) {
+                content += `<div class="bg-emerald-800/60 p-4 rounded-xl border border-emerald-600/50"><h3 class="font-bold text-lg text-emerald-300">🏆 Avrupa Ligi</h3><p class="text-sm text-gray-200 mt-1">Mevcut Aşama: <span class="font-semibold">${tournaments.uel.stage}</span></p></div>`;
+            }
+             if (tournaments.world_cup && tournaments.world_cup.active) {
+                content += `<div class="bg-yellow-800/60 p-4 rounded-xl border border-yellow-600/50"><h3 class="font-bold text-lg text-yellow-300">🏆 Dünya Kupası</h3><p class="text-sm text-gray-200 mt-1">Mevcut Aşama: <span class="font-semibold">${tournaments.world_cup.stage}</span></p></div>`;
+            }
+
+            if(content === '') {
+                 DOMElements.tournamentsContainer.innerHTML = '<p class="text-gray-400 text-center mt-4">Bu sezon herhangi bir uluslararası turnuvada değilsin.</p>';
+            } else {
+                 DOMElements.tournamentsContainer.innerHTML = content;
+            }
+       }
+
+        function renderShop() {
+            DOMElements.shopContainer.innerHTML = '';
+            SHOP_ITEMS.forEach(item => {
+                const isPermanentlyOwned = gameState.player.active_boosts.some(b => b.id === item.id && (b.duration === -1 || (item.one_time && b.one_time) || (b.boost_type === 'sponsorship') || (item.effect.type === 'attribute')));
+                const hasTemporaryBoost = gameState.player.active_boosts.some(b => b.id === item.id && b.matchDuration > 0);
+                
+                let buttonHtml;
+                if(isPermanentlyOwned) {
+                    buttonHtml = `<button class="w-full mt-2 btn-disabled text-white font-bold py-2 px-3 rounded-lg">SATIN ALINDI</button>`;
+                } else if (hasTemporaryBoost) {
+                    const boost = gameState.player.active_boosts.find(b => b.id === item.id);
+                    buttonHtml = `<button class="w-full mt-2 btn-disabled text-white font-bold py-2 px-3 rounded-lg">AKTİF (${boost.matchDuration} Maç Kaldı)</button>`;
+                } else {
+                    const canAfford = gameState.player.money >= item.price;
+                    const affordClass = canAfford ? 'from-emerald-500 to-green-500 hover:to-green-600' : 'btn-disabled from-red-500 to-pink-500';
+                    buttonHtml = `<button data-item-id="${item.id}" ${!canAfford ? 'disabled' : ''} class="buy-btn w-full mt-2 bg-gradient-to-r ${affordClass} text-white font-bold py-2 px-3 rounded-lg transition-transform hover:scale-105">SATIN AL (€${item.price.toLocaleString('de-DE')})</button>`;
+                }
+                
+                DOMElements.shopContainer.innerHTML += `
+                    <div class="bg-gray-800/60 p-4 rounded-xl border border-gray-700/50">
+                        <h3 class="font-bold text-lg text-cyan-300">${item.name}</h3>
+                        <p class="text-sm text-gray-300 mt-1">${item.desc}</p>
+                        ${buttonHtml}
+                    </div>
+                `;
+            });
+
+            document.querySelectorAll('.buy-btn').forEach(btn => btn.addEventListener('click', (e) => { playSound('click'); buyShopItem(e.currentTarget.dataset.itemId); }));
+        }
+
+        function showModal(modalElement) {
+            DOMElements.modalContainer.classList.remove('hidden');
+            DOMElements.modalContainer.classList.add('flex');
+            [DOMElements.nameModal, DOMElements.transferOfferModal, DOMElements.messageModal, DOMElements.loadingModal, DOMElements.blackjackModal].forEach(m => m.classList.add('hidden'));
+            modalElement.classList.remove('hidden');
+        }
+
+        function hideAllModals() {
+            playSound('click');
+            DOMElements.modalContainer.classList.add('hidden');
+            DOMElements.modalContainer.classList.remove('flex');
+        }
+
+        function switchView(viewName) {
+            playSound('switch');
+            Object.values(DOMElements.views).forEach(view => view.classList.add('hidden'));
+            if (DOMElements.views[viewName]) {
+                DOMElements.views[viewName].classList.remove('hidden');
+            }
+            DOMElements.navButtons.forEach(btn => {
+                const isActive = btn.dataset.view === viewName;
+                btn.classList.toggle('nav-active', isActive);
+                btn.classList.toggle('text-gray-400', !isActive);
+            });
+            if (viewName === 'messages') DOMElements.messageNotification.classList.add('hidden');
+            updateUI();
+        }
+
+        function calculateMatchRating(goals, assists, events) {
+            let rating = 6.0;
+            rating += goals * 1.5;
+            rating += assists * 1.0;
+            rating += (events - goals - assists) * 0.2;
+            if (events === 0) rating -= 0.5;
+            return Math.min(10.0, Math.max(1.0, rating));
+        }
+
+        // DÜZELTME: Puan durumu ve sıralamayı anında güncelleyen yeni fonksiyon eklendi.
+        function updateTableRanks() {
+            const sortedTable = [...gameState.leagueTable].sort((a, b) => b.points - a.points || (b.goalsFor - b.goalsAgainst) - (a.goalsFor - a.goalsAgainst) || b.overall - a.overall);
+            
+            sortedTable.forEach((team, index) => {
+                team.rank = index + 1;
+            });
+            
+            gameState.leagueTable = sortedTable;
+        }
+
+
+        function updateLeaguePoints(playerGoals, playerAssists, opponentName) {
+            const playerTeam = gameState.leagueTable.find(t => t.name === gameState.player.team);
+            const opponentTeam = gameState.leagueTable.find(t => t.name === opponentName);
+            if (!playerTeam || !opponentTeam) return { playerScore: 0, opponentScore: 0, won: false };
+            
+            const captaincyTeamBonus = gameState.player.isCaptain ? 1 : 0;
+            const overallDiff = (playerTeam.overall + captaincyTeamBonus) - opponentTeam.overall;
+            
+            let playerScore = Math.floor(Math.random() * 2 + (overallDiff > 5 ? 1 : 0));
+            let opponentScore = Math.floor(Math.random() * 2 + (overallDiff < -5 ? 1 : 0));
+            
+            playerScore = Math.max(0, playerScore + playerGoals + Math.floor(playerAssists / 2));
+            
+            let won = false;
+            if (playerScore > opponentScore) { playerTeam.points += 3; won = true; }
+            else if (playerScore < opponentScore) { opponentTeam.points += 3; }
+            else { playerTeam.points += 1; opponentTeam.points += 1; }
+            
+            playerTeam.played++;
+            opponentTeam.played++;
+            playerTeam.goalsFor += playerScore;
+            playerTeam.goalsAgainst += opponentScore;
+            opponentTeam.goalsFor += opponentScore;
+            opponentTeam.goalsAgainst += playerScore;
+            
+            simulateOtherMatches(playerTeam, opponentTeam);
+
+            // DÜZELTME: Her maçtan sonra puan durumu ve sıralamayı güncelle
+            updateTableRanks();
+            
+            return { playerScore, opponentScore, won };
+        }
+
+        function updatePlayerDevelopment() {
+            const { player } = gameState;
+            const { seasonGoals, seasonAssists, seasonMatches } = player.stats;
+
+            let baseDevelopmentPoints = 0;
+            if (player.age < 20) baseDevelopmentPoints = Math.floor(Math.random() * 3) + 5;
+            else if (player.age < 24) baseDevelopmentPoints = Math.floor(Math.random() * 2) + 3;
+            else if (player.age < 29) baseDevelopmentPoints = Math.floor(Math.random() * 2) + 1;
+            else baseDevelopmentPoints = Math.random() > 0.6 ? 1 : 0;
+            
+            const performancePoints = Math.floor((seasonGoals / 5) + (seasonAssists / 4) + (seasonMatches / 10));
+            let devBoost = 1.0;
+            gameState.player.active_boosts.forEach(boost => { if (boost.boost_type === 'development') devBoost += boost.value; });
+            
+            let totalDevelopmentPoints = Math.round((baseDevelopmentPoints + performancePoints) * devBoost);
+            
+            for (let i = 0; i < totalDevelopmentPoints; i++) {
+                const attrs = ['pace', 'shooting', 'passing'];
+                const randomAttr = attrs[Math.floor(Math.random() * attrs.length)];
+                if(player.attributes[randomAttr] < 99) player.attributes[randomAttr]++;
+            }
+        }
+
+        function generateTransferOffers() {
+            const offers = [];
+            const { player } = gameState;
+            const currentLeagueInfo = leagueData[player.currentLeague];
+            const currentLeagueTier = currentLeagueInfo ? currentLeagueInfo.tier : 0;
+
+            const agentBoost = gameState.player.active_boosts.some(b => b.boost_type === 'transfer' || b.boost_type === 'legacy_agent') ? 1.5 : 1.0;
+            const languageBoost = gameState.player.active_boosts.some(b => b.boost_type === 'language');
+            const legacyAgent = gameState.player.active_boosts.some(b => b.boost_type === 'legacy_agent');
+
+            let potentialTeams = [];
+            
+            for (const leagueName in leagueData) {
+                const leagueInfo = leagueData[leagueName];
+                if (leagueInfo.tier >= currentLeagueTier - 1) {
+                    if (leagueInfo.country !== "Türkiye" && !languageBoost && player.overall < 80) {
+                        continue;
+                    }
+                    potentialTeams.push(...leagueInfo.teams.map(t => ({...t, league: leagueName})));
+                }
+            }
+            
+            if (legacyAgent && player.overall >= 85) {
+                const topLeagues = ["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"];
+                potentialTeams = [];
+                 for (const leagueName of topLeagues) {
+                    potentialTeams.push(...leagueData[leagueName].teams.filter(t => t.overall >= 85).map(t => ({...t, league: leagueName})));
+                }
+            }
+
+            potentialTeams = potentialTeams.filter(t => t.name !== player.team && t.overall > player.overall - 5);
+            if (potentialTeams.length === 0) return [];
+            
+            const numberOfOffers = Math.min(potentialTeams.length, Math.floor(Math.random() * 3) + 1);
+
+            for (let i = 0; i < numberOfOffers; i++) {
+                if (potentialTeams.length === 0) break;
+                
+                const teamIndex = Math.floor(Math.random() * potentialTeams.length);
+                const offerTeam = potentialTeams.splice(teamIndex, 1)[0];
+                const offerLeagueInfo = leagueData[offerTeam.league];
+
+                const salary = Math.round(((player.overall * 100) + (offerLeagueInfo.tier * player.overall * 150)) * agentBoost);
+                const roles = ["Yıldız Oyuncu", "İlk 11 Oyuncusu", "Rotasyon Oyuncusu", "Gelecek Vaat Eden Yetenek"];
+                let offerRole;
+                if(player.overall > offerTeam.overall + 3) offerRole = roles[0];
+                else if(player.overall > offerTeam.overall - 4) offerRole = roles[1];
+                else if(player.overall > offerTeam.overall - 8) offerRole = roles[2];
+                else offerRole = roles[3];
+                
+                const offerJersey = Math.floor(Math.random() * 98) + 1;
+                
+                offers.push({ offerTeam, offerRole, offerJersey, offerSalary: salary, offerLeague: offerTeam.league });
+            }
+            return offers;
+        }
+        
+        function showTransferOfferModal(offers) {
+            let offersHtml = `<h2 class="text-2xl font-bold text-green-400 mb-4">SEZON SONU TRANSFER TEKLİFLERİ</h2><div class="space-y-3 max-h-96 overflow-y-auto no-scrollbar">`;
+            offers.forEach((offer, index) => {
+                const { offerTeam, offerRole, offerJersey, offerSalary } = offer;
+                const country = leagueData[offer.offerLeague].country;
+                offersHtml += `
+                    <div class="text-left bg-gray-700/50 p-3 rounded-lg border border-gray-600">
+                        <p class="font-bold text-lg text-white">${offerTeam.name} <span class="text-sm text-gray-400">(${country} - OVR: ${offerTeam.overall})</span></p>
+                        <p>Rol: <span class="font-semibold text-cyan-300">${offerRole}</span></p>
+                        <p>Forma No: <span class="font-semibold text-cyan-300">${offerJersey}</span></p>
+                        <p>Haftalık Maaş: <span class="font-semibold text-green-400">€${offerSalary.toLocaleString('de-DE')}</span></p>
+                        <button data-offer-index="${index}" class="accept-offer-btn w-full mt-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">BU TEKLİFİ KABUL ET</button>
+                    </div>`;
+            });
+            offersHtml += `</div><button id="reject-all-offers-btn" class="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">TÜMÜNÜ REDDET VE TAKIMINDA KAL</button>`;
+            DOMElements.transferOfferModal.innerHTML = offersHtml;
+            
+            document.querySelectorAll('.accept-offer-btn').forEach(btn => btn.onclick = () => { playSound('click'); handleOfferResponse(true, offers[btn.dataset.offerIndex]); });
+            document.getElementById('reject-all-offers-btn').onclick = () => { playSound('click'); handleOfferResponse(false, null); };
+            
+            showModal(DOMElements.transferOfferModal);
+        }
+        
+        async function handleOfferResponse(accepted, offerDetails) {
+            if (accepted) {
+                const { offerTeam, offerRole, offerJersey, offerSalary, offerLeague } = offerDetails;
+                gameState.player.team = offerTeam.name;
+                gameState.player.role = offerRole;
+                gameState.player.jerseyNumber = offerJersey;
+                gameState.player.salary = offerSalary;
+                gameState.player.currentLeague = offerLeague;
+                gameState.player.isCaptain = false;
+                addMessage("TRANSFER!", `${offerTeam.name} takımına transfer oldun! Yeni haftalık maaşın: €${offerSalary.toLocaleString()}`, 'system');
+            } else {
+                addMessage("Teklifler Reddedildi", "Gelen tüm teklifleri reddettin ve mevcut takımında kalmaya karar verdin.", 'system');
+            }
+            hideAllModals();
+            await initializeSeason();
+            completeSeasonEndProcess();
+        }
+
+        function buyShopItem(itemId) {
+            const item = SHOP_ITEMS.find(i => i.id === itemId);
+            if (!item || gameState.player.money < item.price) {
+                playSound('error');
+                showSimpleMessage("Yetersiz Bakiye!", "Bu ürünü satın almak için yeterli paran yok.");
+                return;
+            }
+            playSound('purchase');
+            gameState.player.money -= item.price;
+            applyItemEffect(item);
+            addMessage("Satın Alım Başarılı!", `${item.name} satın aldın.`, 'system');
+            updateUI();
+            saveGameState(true);
+        }
+
+        function applyItemEffect(item) {
+            const { effect } = item;
+            switch(effect.type) {
+                case 'attribute':
+                    gameState.player.attributes[effect.attr] = Math.min(99, gameState.player.attributes[effect.attr] + effect.value);
+                    break;
+                case 'attribute_all':
+                    gameState.player.attributes.pace = Math.min(99, gameState.player.attributes.pace + effect.value);
+                    gameState.player.attributes.shooting = Math.min(99, gameState.player.attributes.shooting + effect.value);
+                    gameState.player.attributes.passing = Math.min(99, gameState.player.attributes.passing + effect.value);
+                    break;
+                case 'social':
+                    if (effect.attr === 'morale_boost') {
+                        updateMorale(effect.value);
+                    } else {
+                       gameState.social[effect.attr] = Math.min(100, gameState.social[effect.attr] + effect.value);
+                    }
+                    break;
+                case 'social_multi':
+                    effect.attrs.forEach(attr => { gameState.social[attr] = Math.min(100, gameState.social[attr] + effect.value) });
+                    break;
+                case 'social_and_boost':
+                     gameState.social[effect.social.attr] = Math.min(100, gameState.social[effect.social.attr] + effect.social.value);
+                     gameState.player.active_boosts.push({id: item.id, ...effect.boost});
+                     break;
+                case 'boost':
+                    const existingBoost = gameState.player.active_boosts.find(b => b.id === item.id);
+                    if (existingBoost) {
+                        if (existingBoost.matchDuration) existingBoost.matchDuration += effect.matchDuration;
+                        if (existingBoost.duration > 0) existingBoost.duration += effect.duration;
+                    } else {
+                        gameState.player.active_boosts.push({id: item.id, name: item.name, ...effect});
+                    }
+                    break;
+            }
+            if (item.one_time || item.effect.type === 'attribute' || (item.effect.duration && item.effect.duration === -1) || item.effect.boost_type === 'sponsorship' || item.effect.type === 'social_and_boost') {
+                 if (!gameState.player.active_boosts.some(b => b.id === item.id)) {
+                    if(item.effect.type !== 'social_and_boost') {
+                         gameState.player.active_boosts.push({id: item.id, name: item.name, one_time: item.one_time, ...effect});
+                    }
+                 }
+            }
+            renderShop();
+        }
+
+        function doWeeklyActivity(activityName, cost, successCallback) {
+            const weeklyActivityKey = Object.keys(gameState.player.weeklyActivities).find(k => k.toLowerCase().includes(activityName.toLowerCase()));
+
+            if (gameState.player.weeklyActivities[weeklyActivityKey]) {
+                playSound('error');
+                showSimpleMessage('Aktivite Yapıldı', 'Bu aktiviteyi bu hafta zaten yaptın.');
+                return;
+            }
+            if (gameState.player.money < cost) {
+                playSound('error');
+                showSimpleMessage('Para Yetmiyor', `Bu aktivite için €${cost.toLocaleString()} gerekiyor.`);
+                return;
+            }
+
+            playSound('click');
+            gameState.player.money -= cost;
+            gameState.player.weeklyActivities[weeklyActivityKey] = true;
+            successCallback();
+            updateUI();
+            saveGameState(true);
+        }
+
+        function doExtraTraining() {
+            doWeeklyActivity('training', 500, () => {
+                if(Math.random() < 0.25) {
+                    const attrs = ['pace', 'shooting', 'passing'];
+                    const randomAttr = attrs[Math.floor(Math.random() * attrs.length)];
+                    if(gameState.player.attributes[randomAttr] < 99) gameState.player.attributes[randomAttr]++;
+                    addMessage('Gelişim!', `Bu haftaki ekstra antrenman işe yaradı! ${randomAttr.charAt(0).toUpperCase() + randomAttr.slice(1)} +1 arttı.`, 'system');
+                } else {
+                    addMessage('Sıkı Çalışma', 'Ekstra antrenman yaptın ama gözle görülür bir gelişme olmadı. Yine de sıkı çalışmaya devam!', 'system');
+                }
+            });
+        }
+
+        function giveInterview() {
+            doWeeklyActivity('interview', 0, () => {
+                const hasPRTeam = gameState.player.active_boosts.some(b => b.boost_type === 'pr_team');
+                const outcome = Math.random();
+                if(outcome < 0.4) {
+                    gameState.social.fan = Math.min(100, gameState.social.fan + 5);
+                    gameState.social.manager = Math.min(100, gameState.social.manager + 2);
+                    addMessage('Başarılı Röportaj', 'Basın toplantısında kendinden emin ve profesyonel konuştun. Taraftarlar (+5) ve menajerin (+2) bu durumdan memnun.', 'social');
+                } else if (outcome < 0.8) {
+                    addMessage('Sıradan Röportaj', 'Klişe cevaplar verdin. Kimseyi etkilemedin ama kimseyi de kızdırmadın.', 'social');
+                } else {
+                    if (hasPRTeam) {
+                         addMessage('PR Ekibi Devrede!', 'Ağzından talihsiz bir söz kaçırdın ama PR ekibin durumu toparladı. Hiçbir olumsuz etki olmadı.', 'social');
+                    } else {
+                         gameState.social.fan = Math.max(0, gameState.social.fan - 3);
+                         gameState.social.manager = Math.max(0, gameState.social.manager - 5);
+                         addMessage('Kötü Röportaj', 'Ağzından talihsiz bir söz kaçırdın. Menajerin (-5) sinirlendi ve bazı taraftarlar (-3) tepki gösterdi.', 'social');
+                    }
+                }
+            });
+        }
+        
+        function spendTimeWithFamily() {
+            doWeeklyActivity('familyTime', 1000, () => {
+                 gameState.social.fan = Math.min(100, gameState.social.fan + 2);
+                 updateMorale(5);
+                 addMessage('Aile Her Şeydir', 'Ailenle vakit geçirdin. Bu sana iyi geldi. Moral +5, Taraftar Desteği +2', 'social');
+            });
+        }
+
+        function signAutographs() {
+            doWeeklyActivity('autograph', 0, () => {
+                gameState.social.fan = Math.min(100, gameState.social.fan + 7);
+                addMessage('Taraftarlarla Buluşma', 'İmza gününde taraftarlarınla buluştun. Onların sevgisini kazandın! Taraftar Desteği +7', 'social');
+            });
+        }
+
+        function meditate() {
+             doWeeklyActivity('meditation', 0, () => {
+                updateMorale(3);
+                addMessage('İç Huzur', 'Meditasyon yaparak zihnini dinlendirdin. Moral +3', 'social');
+            });
+        }
+
+        function addMessage(title, body, type, clearOld = false) {
+            if (clearOld) gameState.messages = [];
+            gameState.messages.unshift({ title, body, type });
+            if (gameState.messages.length > MAX_MESSAGES) gameState.messages.pop();
+            const currentView = document.querySelector('.nav-active')?.dataset.view || 'home';
+            if (currentView !== 'messages') {
+                DOMElements.messageNotification.classList.remove('hidden');
+            }
+        }
+
+        function showSimpleMessage(title, body) {
+            document.getElementById('message-modal-title').innerText = title;
+            document.getElementById('message-modal-body').innerText = body;
+            showModal(DOMElements.messageModal);
+        }
+        
+        function simulateOtherMatches(playerTeam, opponentTeam) {
+            const otherTeams = gameState.leagueTable.filter(t => t.name !== playerTeam.name && t.name !== opponentTeam.name);
+            for (let i = otherTeams.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [otherTeams[i], otherTeams[j]] = [otherTeams[j], otherTeams[i]];
+            }
+
+            for (let i = 0; i < otherTeams.length; i += 2) {
+                if (i + 1 < otherTeams.length) {
+                    const teamA = otherTeams[i];
+                    const teamB = otherTeams[i+1];
+                    const overallDiff = teamA.overall - teamB.overall;
+                    const diffInfluence = Math.tanh(overallDiff / 10) * 0.3; 
+                    
+                    const probA_Win = 0.33 + diffInfluence;
+                    const probB_Win = 0.33 - diffInfluence;
+                    const random = Math.random();
+
+                    teamA.played++; teamB.played++;
+                    let scoreA = 0, scoreB = 0;
+
+                    if (random < probA_Win) { teamA.points += 3; scoreA = Math.floor(Math.random()*2)+1; scoreB = Math.floor(Math.random()*scoreA); }
+                    else if (random < probA_Win + probB_Win) { teamB.points += 3; scoreB = Math.floor(Math.random()*2)+1; scoreA = Math.floor(Math.random()*scoreB); }
+                    else { teamA.points += 1; teamB.points += 1; scoreA = Math.floor(Math.random()*3); scoreB = scoreA;}
+
+                    teamA.goalsFor += scoreA; teamA.goalsAgainst += scoreB;
+                    teamB.goalsFor += scoreB; teamB.goalsAgainst += scoreA;
+                }
+            }
+        }
+        
+        function checkPromotionRelegation() {
+            const playerTeam = gameState.leagueTable.find(t => t.name === gameState.player.team);
+            if (!playerTeam) return { message: '', promoted: false, relegated: false };
+            
+            const currentLeagueIndex = LEAGUE_ORDER.indexOf(gameState.player.currentLeague);
+            const currentLeagueInfo = leagueData[gameState.player.currentLeague];
+            if (!currentLeagueInfo || currentLeagueInfo.country !== "Türkiye") {
+                 return { message: `\nTakımın bu sezon ligde kaldı.`, promoted: false, relegated: false };
+            }
+            const totalTeams = gameState.leagueTable.length;
+            
+            if (playerTeam.rank <= currentLeagueInfo.promotionThreshold && currentLeagueIndex < 3) {
+                const nextLeagueName = LEAGUE_ORDER[currentLeagueIndex + 1];
+                gameState.player.currentLeague = nextLeagueName;
+                const trophyName = `${LEAGUE_ORDER[currentLeagueIndex]} Şampiyonluğu`;
+                if (!gameState.player.trophies.some(t => t.name === trophyName)) {
+                     gameState.player.trophies.push({ year: gameState.season.year, name: trophyName, icon: '🏆' });
+                }
+                return { message: `\n🏆 TEBRİKLER! Takımın ${nextLeagueName} ligine yükseldi!`, promoted: true, relegated: false };
+            } 
+            else if (playerTeam.rank > totalTeams - currentLeagueInfo.relegationThreshold && currentLeagueIndex > 0) {
+                const prevLeagueName = LEAGUE_ORDER[currentLeagueIndex - 1];
+                gameState.player.currentLeague = prevLeagueName;
+                return { message: `\nMAALESEF takımın ${prevLeagueName} ligine düştü.`, promoted: false, relegated: true };
+            }
+            return { message: `\nTakımın bu sezon ligde kalmayı başardı.`, promoted: false, relegated: false };
+        }
+        
+        function createSeasonReportMessage(oldOvr, newOvr, promoRelegMsg) {
+            const { player, season } = gameState;
+            let devLog = (newOvr > oldOvr) ? `Genel Yetenek +${newOvr - oldOvr} arttı!` : 'Bu sezon pek gelişim gösteremedin.';
+            
+            return {
+                title: `Sezon ${season.year} Raporu`, type: 'system',
+                body: `Bu sezonu ${player.stats.seasonGoals} gol ve ${player.stats.seasonAssists} asist ile tamamladın.\n\n${devLog}\n${promoRelegMsg}`
+            };
+        }
+
+        function updateNationalTeamUI() {
+            const { nationalTeam } = gameState.player;
+            DOMElements.nationalCapsDisplay.innerText = nationalTeam.caps;
+            DOMElements.nationalGoalsDisplay.innerText = nationalTeam.goals;
+            if (nationalTeam.calledUp) {
+                DOMElements.nationalStatusDisplay.innerText = `${nationalTeam.currentCountry} Milli Takımında!`;
+                DOMElements.nationalStatusDisplay.className = 'text-green-400 font-semibold';
+            } else {
+                DOMElements.nationalStatusDisplay.innerText = 'Henüz milli takıma çağrılmadın.';
+                DOMElements.nationalStatusDisplay.className = 'text-gray-400 italic';
+            }
+        }
+
+        function updateTrophiesUI() {
+            DOMElements.trophiesContainer.innerHTML = '';
+            if (gameState.player.trophies.length > 0) {
+                const sortedTrophies = [...gameState.player.trophies].sort((a, b) => b.year - a.year);
+                sortedTrophies.forEach(trophy => {
+                    DOMElements.trophiesContainer.innerHTML += `<p class="flex justify-between items-center">${trophy.year} - ${trophy.icon} ${trophy.name}</p>`;
+                });
+            } else {
+                DOMElements.trophiesContainer.innerHTML = '<p class="text-gray-400 italic">Henüz kupa kazanmadın.</p>';
+            }
+        }
+
+        function updateAwardsUI() {
+            DOMElements.awardsContainer.innerHTML = '';
+            if (gameState.player.awards.length > 0) {
+                const sortedAwards = [...gameState.player.awards].sort((a, b) => b.year - a.year);
+                sortedAwards.forEach(award => {
+                    DOMElements.awardsContainer.innerHTML += `<p class="flex justify-between items-center">${award.year} - ${award.icon} ${award.name}</p>`;
+                });
+            } else {
+                DOMElements.awardsContainer.innerHTML = '<p class="text-gray-400 italic">Henüz bireysel ödül kazanmadın.</p>';
+            }
+        }
+        
+        function updateNextMatchUI() {
+            const playerTeam = gameState.leagueTable.find(t => t.name === gameState.player.team);
+            const nextOpponentName = gameState.fixture[gameState.season.week - 1];
+            const nextOpponent = nextOpponentName ? gameState.leagueTable.find(t => t.name === nextOpponentName) : null;
+            
+            document.getElementById('home-team-name').innerText = playerTeam ? playerTeam.name : 'Takım Yok';
+            document.getElementById('home-team-overall').innerText = playerTeam ? playerTeam.overall : '--';
+            
+            if (nextOpponent) {
+                document.getElementById('away-team-name').innerText = nextOpponent.name;
+                document.getElementById('away-team-overall').innerText = nextOpponent.overall;
+            } else {
+                document.getElementById('away-team-name').innerText = "Sezon Sonu";
+                document.getElementById('away-team-overall').innerText = "🏁";
+            }
+
+            const playerRank = playerTeam && playerTeam.rank ? playerTeam.rank : (gameState.leagueTable.findIndex(t => t.name === gameState.player.team) + 1 || '--');
+            document.getElementById('league-position').innerText = `${playerRank}.`;
+        }
+
+        function updateSocialBar(type, value) {
+            const label = document.getElementById(`${type}-relation`);
+            const bar = document.getElementById(`${type}-relation-bar`);
+            if (!label || !bar) return;
+            let statusText, colorClass;
+            const val = Math.round(value);
+            if (val >= 75) { statusText = `Harika (%${val})`; colorClass = 'bg-green-500'; }
+            else if (val >= 50) { statusText = `İyi (%${val})`; colorClass = 'bg-yellow-500'; }
+            else if (val >= 25) { statusText = `Normal (%${val})`; colorClass = 'bg-orange-500'; }
+            else { statusText = `Kötü (%${val})`; colorClass = 'bg-red-500'; }
+            label.innerText = statusText;
+            bar.style.width = `${val}%`;
+            bar.className = `h-2.5 rounded-full ${colorClass}`;
+        }
+        
+        function updateMorale(manualBoost = 0) {
+            const moraleStatus = document.getElementById('morale-status');
+            const avgSocial = (gameState.social.manager + gameState.social.team + gameState.social.fan) / 3;
+            const itemBoost = gameState.player.active_boosts
+                .filter(b => b.boost_type === 'morale')
+                .reduce((sum, b) => sum + b.value, 0);
+            
+            let currentMorale = (avgSocial + itemBoost + manualBoost);
+            const totalMorale = Math.min(100, currentMorale);
+
+            if (totalMorale >= 80) { moraleStatus.innerText = 'Mükemmel'; moraleStatus.className = 'text-2xl font-bold text-green-400'; }
+            else if (totalMorale >= 60) { moraleStatus.innerText = 'İyi'; moraleStatus.className = 'text-2xl font-bold text-yellow-400'; }
+            else if (totalMorale >= 40) { moraleStatus.innerText = 'Normal'; moraleStatus.className = 'text-2xl font-bold text-orange-400'; }
+            else { moraleStatus.innerText = 'Kötü'; moraleStatus.className = 'text-2xl font-bold text-red-400'; }
+        }
+        
+        function renderMessages() {
+            DOMElements.messageContainer.innerHTML = '';
+            const messagesToShow = gameState.messages;
+            if (messagesToShow.length === 0) {
+                DOMElements.messageContainer.innerHTML = '<p class="text-gray-400 text-center">Henüz yeni bir mesaj yok.</p>';
+            } else {
+                messagesToShow.forEach(msg => {
+                    let bgColor = 'bg-gray-700/50'; let icon = 'mail';
+                    if (msg.type === 'match') { bgColor = 'bg-blue-800/50'; icon = 'gamepad-2'; }
+                    if (msg.type === 'social') { bgColor = 'bg-pink-800/50'; icon = 'heart'; }
+                    if (msg.type === 'system') { bgColor = 'bg-purple-800/50'; icon = 'settings'; }
+                    
+                    DOMElements.messageContainer.innerHTML += `
+                        <div class="${bgColor} p-3 rounded-xl border border-gray-600/50">
+                            <h3 class="font-semibold text-white mb-1 flex items-center"><i data-lucide="${icon}" class="w-4 h-4 mr-2"></i>${msg.title}</h3>
+                            <p class="text-sm text-gray-300 whitespace-pre-wrap pl-6">${msg.body}</p>
+                        </div>`;
+                });
+                lucide.createIcons();
+            }
+        }
+        
+        function updateGirlfriendView() {
+            const gfView = document.getElementById('girlfriend-view');
+            const { girlfriend } = gameState.player;
+            if (girlfriend.status === 'single') {
+                gfView.innerHTML = `<h3 class="font-semibold text-gray-300 text-sm mb-2">Aşk Hayatı</h3><button id="find-gf-btn" class="w-full text-sm bg-pink-600/80 hover:bg-pink-500/80 text-white font-semibold py-2 px-4 rounded-lg">Yeni İnsanlarla Tanış</button>`;
+                document.getElementById('find-gf-btn').addEventListener('click', () => { playSound('click'); findGirlfriend(); });
+            } else {
+                gfView.innerHTML = `<h3 class="font-semibold text-gray-300 text-sm mb-2">Kız Arkadaşın: ${girlfriend.name}</h3><button id="interact-gf-btn" class="w-full text-sm bg-purple-600/80 hover:bg-purple-500/80 text-white font-semibold py-2 px-4 rounded-lg">Onunla Vakit Geçir</button>`;
+                document.getElementById('interact-gf-btn').addEventListener('click', () => { playSound('click'); interactWithGirlfriend(); });
+            }
+        }
+
+        function findGirlfriend() {
+            if (Math.random() > 0.5) {
+                const names = ["Elif", "Zeynep", "Ayşe", "Buse", "Selin", "Bahar", "Ceren"];
+                const name = names[Math.floor(Math.random() * names.length)];
+                gameState.player.girlfriend = { status: 'in_relationship', name: name, weeksSinceInteraction: 0 };
+                addMessage('Yeni Bir Aşk!', `${name} ile yeni bir ilişkiye başladın! Moral ve sosyal hayatın olumlu etkilendi.`, 'social');
+                gameState.social.fan += 5;
+            } else {
+                addMessage('Aşkta Şanssızlık', 'Bu hafta yeni biriyle tanışamadın, belki sonraki sefere.', 'social');
+            }
+            saveGameState();
+            updateUI();
+            switchView('messages');
+        }
+
+        function interactWithGirlfriend() {
+            gameState.player.girlfriend.weeksSinceInteraction = 0;
+            addMessage('Harika Bir Gün!', `${gameState.player.girlfriend.name} ile harika vakit geçirdin. Moraliniz yükseldi.`, 'social');
+            updateMorale(5);
+            gameState.social.fan = Math.min(100, gameState.social.fan + 2);
+            saveGameState();
+            updateUI();
+            switchView('messages');
+        }
+
+        function checkNationalTeamCallUp() {
+            const { player } = gameState;
+            const currentLeagueInfo = leagueData[player.currentLeague];
+            const leagueTier = currentLeagueInfo ? currentLeagueInfo.tier : 0;
+            const callUpThreshold = 82 - (leagueTier * 2); 
+            if (player.overall >= callUpThreshold && player.stats.seasonGoals >= 10 && !player.nationalTeam.calledUp) {
+                player.nationalTeam.calledUp = true;
+                player.nationalTeam.caps++;
+                addMessage('Milli Takım Çağrısı!', `${player.nationalTeam.currentCountry} Milli Takımından çağrı aldın!`, 'system');
+                if (Math.random() > 0.6) {
+                    player.nationalTeam.goals++;
+                    addMessage('Milli Takım Golü!', `Milli forma ile ilk golünü attın!`, 'system');
+                }
+            } else if (player.overall < callUpThreshold - 3 && player.nationalTeam.calledUp) {
+                player.nationalTeam.calledUp = false;
+                 addMessage('Milli Takım Dışı!', `Performans düşüklüğü nedeniyle Milli Takım kadrosundan çıkarıldın.`, 'system');
+            }
+        }
+
+        function checkSeasonAwards() {
+            const { player, season, leagueTable } = gameState;
+            const topScorerInLeague = [...leagueTable].sort((a,b) => b.overall - a.overall)[0];
+            const leagueTier = leagueData[player.currentLeague]?.tier || 0;
+            const topScorerGoals = Math.round(topScorerInLeague.overall / 4 + season.totalWeeks / 4 - leagueTier*2);
+            if (player.stats.seasonGoals > topScorerGoals && player.stats.seasonGoals > 0) {
+                player.awards.push({ year: season.year, name: `${player.currentLeague} Gol Kralı`, icon: '⚽' });
+                addMessage('Bireysel Ödül!', `🏆 ${season.year} sezonunun Gol Kralı ödülünü kazandın!`, 'system');
+            }
+            
+            const playerRank = leagueTable.find(t => t.name === player.team)?.rank || 20;
+            if (player.overall > 80 && (player.stats.seasonGoals + player.stats.seasonAssists) > 25 && playerRank <= 3) {
+                player.awards.push({ year: season.year, name: `${player.currentLeague} Yılın Oyuncusu`, icon: '⭐' });
+                addMessage('Bireysel Ödül!', `⭐ ${season.year} sezonunun En İyi Oyuncusu ödülünü kazandın!`, 'system');
+            }
+            if (player.age <= 21 && player.overall > 75) {
+                if(!player.awards.some(a => a.name.includes("Altın Çocuk"))) {
+                     player.awards.push({ year: season.year, name: `Avrupa Altın Çocuk`, icon: '🌟'});
+                     addMessage('Bireysel Ödül!', `🌟 Avrupa'nın en iyi genç oyuncusuna verilen Altın Çocuk ödülünü kazandın!`, 'system');
+                }
+            }
+        }
+        
+        function checkTournamentQualification() {
+            const playerTeam = gameState.leagueTable.find(t => t.name === gameState.player.team);
+            if (!playerTeam) return;
+            const leagueInfo = leagueData[gameState.player.currentLeague];
+            if (!leagueInfo) return;
+
+            gameState.tournaments.ucl = null;
+            gameState.tournaments.uel = null;
+
+            if(leagueInfo.uclSpots && playerTeam.rank <= leagueInfo.uclSpots) {
+                gameState.tournaments.ucl = { active: true, stage: 'Grup Aşaması'};
+                addMessage('Şampiyonlar Ligi!', `Takımın gelecek sezon Şampiyonlar Ligi'ne katılma hakkı kazandı!`, 'system');
+            }
+            else if(leagueInfo.uelSpots && playerTeam.rank <= leagueInfo.uclSpots + leagueInfo.uelSpots) {
+                gameState.tournaments.uel = { active: true, stage: 'Grup Aşaması'};
+                addMessage('Avrupa Ligi!', `Takımın gelecek sezon Avrupa Ligi'ne katılma hakkı kazandı!`, 'system');
+            }
+        }
+
+        function generateMatchEvents() {
+            const events = [];
+            const { attributes } = gameState.player;
+            const playerTeam = gameState.leagueTable.find(t => t.name === gameState.player.team);
+            const opponentTeam = gameState.leagueTable.find(t => t.name === gameState.fixture[gameState.season.week - 1]);
+            if (!playerTeam || !opponentTeam) return [];
+            
+            const overallDiffFactor = Math.tanh((playerTeam.overall - opponentTeam.overall) / 15);
+            const baseChance = 0.3 + overallDiffFactor * 0.2;
+
+            const tempShooting = attributes.shooting + (gameState.player.active_boosts.find(b=>b.boost_type === 'attribute' && b.attr==='shooting')?.value || 0);
+            if (Math.random() < (tempShooting / 150 * (baseChance + 0.2))) { events.push({ type: 'goal', text: `GOL! Harika bir vuruşla topu ağlara gönderdin!` }); }
+            else if (Math.random() < (tempShooting / 120 * baseChance)) { events.push({ type: 'event', text: `Kaleyi yokladın ama kaleci topu kornere çeldi.` }); }
+            
+            const tempPassing = attributes.passing + (gameState.player.active_boosts.find(b=>b.boost_type === 'attribute' && b.attr==='passing')?.value || 0);
+            if (Math.random() < (tempPassing / 150 * (baseChance + 0.1))) { events.push({ type: 'assist', text: `ASİST! Akıl dolu pasınla takım arkadaşını golle buluşturdun.` }); }
+            
+            const tempPace = attributes.pace + (gameState.player.active_boosts.find(b=>b.boost_type === 'attribute' && b.attr==='pace')?.value || 0);
+            if (Math.random() < (tempPace / 130 * baseChance)) { events.push({ type: 'event', text: `Hızını kullanarak rakibini geçtin ve tehlike yarattın.` }); }
+            
+            return events;
+        }
+
+        function updateSocialRelations(goals, assists, events, won) {
+            let change = (goals * 3) + (assists * 2) + (events * 0.5) - 2 + (won ? 1 : -0.5);
+            if (gameState.player.isCaptain) {
+                change += 1;
+            }
+            gameState.social.fan = Math.min(100, Math.max(0, gameState.social.fan + change));
+            gameState.social.manager = Math.min(100, Math.max(0, gameState.social.manager + change / 2));
+            gameState.social.team = Math.min(100, Math.max(0, gameState.social.team + change / 3));
+        }
+
+        function checkCaptaincy() {
+            const { player } = gameState;
+            if (player.isCaptain) return;
+
+            const captaincyChanceBoost = player.active_boosts.find(b => b.boost_type === 'captaincy_chance')?.value || 0;
+            const chance = 0.05 + captaincyChanceBoost; 
+            
+            if (gameState.social.manager > 75 && gameState.social.team > 70 && player.age > 23 && Math.random() < chance) {
+                player.isCaptain = true;
+                addMessage('KAPTAN!', `Takım arkadaşların ve teknik heyetin kararıyla takım kaptanlığına getirildin! Sahada lider olacaksın.`, 'system');
+            }
+        }
+
+        function updatePlayerValue() {
+            const { player } = gameState;
+            const leagueInfo = leagueData[player.currentLeague];
+            const leagueTier = leagueInfo ? leagueInfo.tier : 0;
+
+            const baseValue = (player.overall ** 3.2);
+            const ageFactor = player.age < 30 ? (1 - ((player.age - 16) * 0.03)) : 0.4;
+            const leagueMultiplier = 1 + (leagueTier * 0.5);
+            const performanceBonus = (player.stats.goals * 20000) + (player.stats.assists * 10000);
+            
+            let newValue = Math.round((baseValue * ageFactor * leagueMultiplier) + performanceBonus);
+            newValue = Math.max(10000, newValue);
+            player.marketValue = newValue;
+        }
+
+        const blackjackGame = {
+            deck: [], suits: ['♠', '♥', '♦', '♣'], ranks: ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'],
+            playerHand: [], dealerHand: [], playerScore: 0, dealerScore: 0, bet: 0,
+            createDeck() { this.deck = []; for (let suit of this.suits) { for (let rank of this.ranks) { this.deck.push({ suit, rank }); } } },
+            shuffleDeck() { for (let i = this.deck.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]]; } },
+            getCardValue(card) { if (['J', 'Q', 'K'].includes(card.rank)) return 10; if (card.rank === 'A') return 11; return parseInt(card.rank); },
+            calculateScore(hand) { let score = hand.reduce((sum, card) => sum + this.getCardValue(card), 0); let aceCount = hand.filter(card => card.rank === 'A').length; while (score > 21 && aceCount > 0) { score -= 10; aceCount--; } return score; },
+            renderCard(card, isHidden = false) { const color = ['♦', '♥'].includes(card.suit) ? 'text-red-500' : 'text-black'; return `<div class="w-16 h-20 bg-white rounded-lg p-1 flex flex-col justify-between shadow-md ${color} relative overflow-hidden">${isHidden ? `<div class="absolute inset-0 bg-purple-600 rounded-lg flex items-center justify-center"><i data-lucide="shield-question" class="text-white"></i></div>` : `<div class="text-lg font-bold">${card.rank}</div> <div class="text-2xl self-center">${card.suit}</div> <div class="text-lg font-bold self-end transform rotate-180">${card.rank}</div>`}</div>`; },
+            updateHandsUI() { const dealerCardsEl = document.getElementById('dealer-cards'); const playerCardsEl = document.getElementById('player-cards'); const isGameActive = !document.getElementById('blackjack-actions').classList.contains('hidden'); dealerCardsEl.innerHTML = this.dealerHand.map((card, i) => this.renderCard(card, i === 0 && isGameActive)).join(''); playerCardsEl.innerHTML = this.playerHand.map(card => this.renderCard(card)).join(''); document.getElementById('dealer-score').innerText = isGameActive ? this.getCardValue(this.dealerHand[1]) : this.dealerScore; document.getElementById('player-blackjack-score').innerText = this.playerScore; lucide.createIcons(); },
+            start() { this.bet = parseInt(document.getElementById('blackjack-bet-input').value); if (isNaN(this.bet) || this.bet <= 0) { playSound('error'); showSimpleMessage('Geçersiz Bahis', 'Lütfen geçerli bir bahis miktarı girin.'); return; } if (this.bet > gameState.player.money) { playSound('error'); showSimpleMessage('Yetersiz Bakiye', 'Bahis için yeterli paranız yok.'); return; } playSound('click'); gameState.player.money -= this.bet; addMessage('Blackjack', `€${this.bet.toLocaleString()} bahis oynadın.`, 'social'); updateUI(); this.createDeck(); this.shuffleDeck(); this.playerHand = [this.deck.pop(), this.deck.pop()]; this.dealerHand = [this.deck.pop(), this.deck.pop()]; this.playerScore = this.calculateScore(this.playerHand); this.dealerScore = this.calculateScore(this.dealerHand); document.getElementById('blackjack-start-controls').classList.add('hidden'); document.getElementById('blackjack-actions').classList.remove('hidden'); document.getElementById('blackjack-result').innerText = ''; this.updateHandsUI(); if (this.playerScore === 21) { this.endGame(true); } },
+            hit() { playSound('click'); this.playerHand.push(this.deck.pop()); this.playerScore = this.calculateScore(this.playerHand); this.updateHandsUI(); if (this.playerScore > 21) { this.endGame(false); } },
+            stand() { playSound('click'); document.getElementById('blackjack-actions').classList.add('hidden'); this.dealerTurn(); },
+            dealerTurn() { this.updateHandsUI(); const dealerInterval = setInterval(() => { if (this.dealerScore < 17) { this.dealerHand.push(this.deck.pop()); this.dealerScore = this.calculateScore(this.dealerHand); this.updateHandsUI(); } else { clearInterval(dealerInterval); this.endGame(false); } }, 1000); },
+            endGame(playerHasBlackjack) { document.getElementById('blackjack-actions').classList.add('hidden'); document.getElementById('blackjack-start-controls').classList.remove('hidden'); let resultText = ''; let winnings = 0; if (playerHasBlackjack) { resultText = "BLACKJACK! KAZANDIN!"; winnings = this.bet * 2.5; } else if (this.playerScore > 21) { resultText = "BUST! KAYBETTİN!"; } else if (this.dealerScore > 21 || this.playerScore > this.dealerScore) { resultText = "KAZANDIN!"; winnings = this.bet * 2; } else if (this.playerScore < this.dealerScore) { resultText = "KAYBETTİN!"; } else { resultText = "BERABERE!"; winnings = this.bet; } gameState.player.money += winnings; if (winnings > 0 && winnings !== this.bet) addMessage('Blackjack', `€${winnings.toLocaleString()} kazandın.`, 'social'); else if (winnings === this.bet) addMessage('Blackjack', 'Bahsin iade edildi.', 'social'); document.getElementById('blackjack-result').innerText = resultText; this.updateHandsUI(); gameState.player.weeklyActivities.blackjackPlayed = true; updateUI(); saveGameState(true); }
+        };
+
+        function setupEventListeners() {
+            DOMElements.startCareerBtn.addEventListener('click', async () => {
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                    console.log('Audio Context başlatıldı.');
+                    Tone.Transport.start();
+                }
+
+                const name = DOMElements.playerNameInput.value.trim();
+                if (name) {
+                    playSound('click');
+                    gameState.player.name = name;
+                    addMessage('Kariyer Başladı!', `${name} olarak ELITE CAREER dünyasına hoş geldin!`, 'system', true);
+                    hideAllModals();
+                    DOMElements.gameContainer.classList.remove('hidden');
+                    DOMElements.gameContainer.classList.add('flex', 'fade-in');
+                    initializeSeason();
+                } else {
+                     playSound('error');
+                }
+            });
+            
+            DOMElements.playMatchBtn.addEventListener('click', playMatch);
+            DOMElements.navButtons.forEach(button => button.addEventListener('click', () => switchView(button.dataset.view)));
+            DOMElements.leagueSelector.addEventListener('change', (e) => { playSound('click'); renderLeagueTable(e.target.value); });
+            document.getElementById('message-modal-confirm-btn').addEventListener('click', hideAllModals);
+            DOMElements.extraTrainingBtn.addEventListener('click', doExtraTraining);
+            DOMElements.giveInterviewBtn.addEventListener('click', giveInterview);
+            DOMElements.blackjackWeeklyBtn.addEventListener('click', () => {
+                 if (gameState.player.weeklyActivities.blackjackPlayed) {
+                       playSound('error');
+                       showSimpleMessage('Aktivite Yapıldı', 'Bu hafta zaten Blackjack oynadın.'); return;
+                 }
+                playSound('click');
+                showModal(DOMElements.blackjackModal);
+            });
+            DOMElements.spendTimeFamilyBtn.addEventListener('click', spendTimeWithFamily);
+            DOMElements.signAutographsBtn.addEventListener('click', signAutographs);
+            DOMElements.meditateBtn.addEventListener('click', meditate);
+            
+            document.getElementById('blackjack-play-btn').addEventListener('click', () => blackjackGame.start());
+            document.getElementById('blackjack-hit-btn').addEventListener('click', () => blackjackGame.hit());
+            document.getElementById('blackjack-stand-btn').addEventListener('click', () => blackjackGame.stand());
+            document.getElementById('blackjack-close-btn').addEventListener('click', hideAllModals);
+
+            DOMElements.musicToggleBtn.addEventListener('click', toggleMusic);
+        }
+        
+        window.onload = async () => {
+            initializeAudio(); 
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            
+            lucide.createIcons();
+            setupEventListeners();
+            showModal(DOMElements.loadingModal);
+
+            LEAGUE_ORDER.forEach(league => {
+                const option = document.createElement('option');
+                option.value = league;
+                option.textContent = `${leagueData[league].country} - ${league}`;
+                DOMElements.leagueSelector.appendChild(option);
+            });
+
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    currentUserId = user.uid;
+                    isAuthReady = true;
+                    console.log("Firebase Auth Hazır. Kullanıcı ID:", currentUserId);
+                    
+                    let loadedGame = await loadGameState();
+                    if (loadedGame) {
+                        gameState = loadedGame;
+                    }
+
+                    Object.defineProperty(gameState.player, 'overall', {
+                        get: function() { 
+                            const tempBoosts = this.active_boosts?.filter(b => b.boost_type === 'attribute' && b.matchDuration > 0) || [];
+                            const paceBoost = tempBoosts.filter(b => b.attr === 'pace').reduce((sum, b) => sum + b.value, 0);
+                            const shootingBoost = tempBoosts.filter(b => b.attr === 'shooting').reduce((sum, b) => sum + b.value, 0);
+                            const passingBoost = tempBoosts.filter(b => b.attr === 'passing').reduce((sum, b) => sum + b.value, 0);
+                            return Math.round(((this.attributes.pace + paceBoost) + (this.attributes.shooting + shootingBoost) + (this.attributes.passing + passingBoost)) / 3);
+                        },
+                        configurable: true, enumerable: true
+                    });
+
+                    if (!loadedGame || !gameState.player.name) {
+                        showModal(DOMElements.nameModal);
+                    } else {
+                        document.body.addEventListener('click', async () => {
+                             if (Tone.context.state !== 'running') {
+                                await Tone.start();
+                                console.log('Audio Context başlatıldı.');
+                                Tone.Transport.start();
+                             }
+                        }, { once: true });
+
+
+                        hideAllModals();
+                        DOMElements.gameContainer.classList.remove('hidden');
+                        DOMElements.gameContainer.classList.add('flex', 'fade-in');
+                        DOMElements.leagueSelector.value = gameState.player.currentLeague;
+                        updateUI();
+                    }
+                } else {
+                    console.log("Oturum açılıyor...");
+                    try {
+                        // Önce özel token ile giriş yapmayı dene
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            // Token yoksa anonim olarak giriş yap
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Özel token ile oturum açma hatası, anonim denenecek:", error);
+                        // Eğer özel token ile giriş başarısız olursa, anonim olarak giriş yapmayı dene
+                        try {
+                            await signInAnonymously(auth);
+                        } catch (anonError) {
+                             console.error("Anonim oturum açma da başarısız oldu:", anonError);
+                             // Her ikisi de başarısız olursa, çevrimdışı moda geç
+                             isAuthReady = true; 
+                             currentUserId = 'offline-mode';
+                             showModal(DOMElements.nameModal); 
+                        }
+                    }
+                }
+            });
+        };
+    </script>
+</body>
+</html>
